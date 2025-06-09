@@ -555,39 +555,6 @@ class NotesProvider extends ChangeNotifier {
     }
   }
   
-  /// Move note to different folder
-  Future<Note?> moveNote(Note note, Folder targetFolder) async {
-    const operation = 'moveNote';
-    _setOperationLoading(operation, true);
-    _clearError();
-    
-    try {
-      final movedNote = await _fileService.moveNote(note, targetFolder.path);
-      
-      // Remove from current folder
-      _currentFolder?.removeNoteInstance(note);
-      
-      // Add to target folder
-      targetFolder.addNote(movedNote);
-      
-      // Update notes list if current folder changed
-      _notes = _currentFolder?.notes ?? [];
-      
-      // Update selected note
-      if (_selectedNote?.id == note.id) {
-        _selectedNote = movedNote;
-      }
-      
-      notifyListeners();
-      return movedNote;
-    } catch (e) {
-      _setError('Failed to move note: $e');
-      return null;
-    } finally {
-      _setOperationLoading(operation, false);
-    }
-  }
-  
   @override
   void dispose() {
     // Clean up any resources if needed
