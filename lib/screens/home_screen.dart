@@ -117,7 +117,10 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             const SizedBox(height: 24),
             ElevatedButton.icon(
-              onPressed: () => notesProvider.loadVault(),
+              onPressed: () {
+                debugPrint('Pressed Retry Button');
+                notesProvider.loadVault();
+              },
               icon: const Icon(Icons.refresh),
               label: const Text('Retry'),
             ),
@@ -152,7 +155,10 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             const SizedBox(height: 32),
             ElevatedButton.icon(
-              onPressed: () => notesProvider.loadVault(),
+              onPressed: () {
+                debugPrint('Pressed Initialize Vault Button');
+                notesProvider.loadVault();
+              },
               icon: const Icon(Icons.folder_open),
               label: const Text('Initialize Vault'),
             ),
@@ -200,12 +206,16 @@ class _HomeScreenState extends State<HomeScreen> {
               _buildVaultStats(notesProvider),
               const SizedBox(width: 16),
               IconButton(
-                onPressed: () => notesProvider.refreshCurrentFolder(),
+                onPressed: () {
+                  debugPrint('Pressed Refresh Button');
+                  notesProvider.refreshCurrentFolder();
+                },
                 icon: const Icon(Icons.refresh),
                 tooltip: 'Refresh',
               ),
               IconButton(
                 onPressed: () {
+                  debugPrint('Pressed Settings Button');
                   // TODO: Open settings
                 },
                 icon: const Icon(Icons.settings),
@@ -259,6 +269,7 @@ class _HomeScreenState extends State<HomeScreen> {
         suffixIcon: notesProvider.isSearching
             ? IconButton(
                 onPressed: () {
+                  debugPrint('Pressed Clear Search Button');
                   _searchController.clear();
                   notesProvider.clearSearch();
                 },
@@ -293,7 +304,10 @@ class _HomeScreenState extends State<HomeScreen> {
         children: [
           for (int i = 0; i < notesProvider.breadcrumbs.length; i++) ...[
             InkWell(
-              onTap: () => notesProvider.loadFolder(notesProvider.breadcrumbs[i]),
+              onTap: () {
+                debugPrint('Pressed Breadcrumb Folder/Home Button: ${notesProvider.breadcrumbs[i].name}');
+                notesProvider.loadFolder(notesProvider.breadcrumbs[i]);
+              },
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
@@ -459,7 +473,10 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
           const SizedBox(height: 24),
           ElevatedButton.icon(
-            onPressed: () => _showCreateNoteDialog(notesProvider),
+            onPressed: () {
+              debugPrint('Pressed Create Note Button (Empty State)');
+              _showCreateNoteDialog(notesProvider);
+            },
             icon: const Icon(Icons.add),
             label: const Text('Create Note'),
           ),
@@ -498,12 +515,16 @@ class _HomeScreenState extends State<HomeScreen> {
     
     return Card(
       elevation: isSelected ? 4 : 1,
-      color: isSelected 
+      color: isSelected
           ? Theme.of(context).colorScheme.primaryContainer
           : Theme.of(context).colorScheme.surface,
       child: InkWell(
-        onTap: () => notesProvider.selectNote(note),
+        onTap: () {
+          debugPrint('Pressed Note Card (Tap): ${note.title}');
+          notesProvider.selectNote(note);
+        },
         onDoubleTap: () {
+          debugPrint('Pressed Note Card (Double Tap): ${note.title}');
           _navigateToNoteEditor(note);
         },
         borderRadius: BorderRadius.circular(12),
@@ -516,7 +537,7 @@ class _HomeScreenState extends State<HomeScreen> {
               Text(
                 note.title,
                 style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  color: isSelected 
+                  color: isSelected
                       ? Theme.of(context).colorScheme.onPrimaryContainer
                       : null,
                 ),
@@ -529,7 +550,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 child: Text(
                   note.content,
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: isSelected 
+                    color: isSelected
                         ? Theme.of(context).colorScheme.onPrimaryContainer.withOpacity(0.7)
                         : Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                   ),
@@ -544,7 +565,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   Icon(
                     Icons.access_time,
                     size: 12,
-                    color: isSelected 
+                    color: isSelected
                         ? Theme.of(context).colorScheme.onPrimaryContainer.withOpacity(0.5)
                         : Theme.of(context).colorScheme.onSurface.withOpacity(0.5),
                   ),
@@ -553,7 +574,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     child: Text(
                       _formatDate(note.modifiedAt),
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: isSelected 
+                        color: isSelected
                             ? Theme.of(context).colorScheme.onPrimaryContainer.withOpacity(0.5)
                             : Theme.of(context).colorScheme.onSurface.withOpacity(0.5),
                         fontSize: 10,
@@ -564,11 +585,14 @@ class _HomeScreenState extends State<HomeScreen> {
                     icon: Icon(
                       Icons.more_vert,
                       size: 16,
-                      color: isSelected 
+                      color: isSelected
                           ? Theme.of(context).colorScheme.onPrimaryContainer.withOpacity(0.5)
                           : Theme.of(context).colorScheme.onSurface.withOpacity(0.5),
                     ),
-                    onSelected: (action) => _handleNoteAction(action, note, notesProvider),
+                    onSelected: (action) {
+                      debugPrint('Selected Note Card Popup Menu Action: $action for note ${note.title}');
+                      _handleNoteAction(action, note, notesProvider);
+                    },
                     itemBuilder: (context) => [
                       const PopupMenuItem(value: 'edit', child: Text('Edit')),
                       const PopupMenuItem(value: 'delete', child: Text('Delete')),
@@ -598,8 +622,12 @@ class _HomeScreenState extends State<HomeScreen> {
           _formatDate(note.modifiedAt),
           style: Theme.of(context).textTheme.bodySmall,
         ),
-        onTap: () => notesProvider.selectNote(note),
+        onTap: () {
+          debugPrint('Pressed Note List Item: ${note.title}');
+          notesProvider.selectNote(note);
+        },
         onLongPress: () {
+          debugPrint('Long Pressed Note List Item: ${note.title}');
           // TODO: Show note options
         },
       ),
@@ -611,7 +639,10 @@ class _HomeScreenState extends State<HomeScreen> {
       mainAxisSize: MainAxisSize.min,
       children: [
         FloatingActionButton(
-          onPressed: () => _showCreateFolderDialog(notesProvider),
+          onPressed: () {
+            debugPrint('Pressed Floating Action Button: Create Folder');
+            _showCreateFolderDialog(notesProvider);
+          },
           heroTag: "folder",
           backgroundColor: Theme.of(context).colorScheme.secondaryContainer,
           foregroundColor: Theme.of(context).colorScheme.onSecondaryContainer,
@@ -619,7 +650,10 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
         const SizedBox(height: 16),
         FloatingActionButton(
-          onPressed: () => _createNewNote(),
+          onPressed: () {
+            debugPrint('Pressed Floating Action Button: Create Note');
+            _createNewNote();
+          },
           heroTag: "note",
           child: const Icon(Icons.add),
         ),
@@ -670,11 +704,15 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.of(context).pop(),
+            onPressed: () {
+              debugPrint('Pressed Create New Note Dialog: Cancel Button');
+              Navigator.of(context).pop();
+            },
             child: const Text('Cancel'),
           ),
           ElevatedButton(
             onPressed: () {
+              debugPrint('Pressed Create New Note Dialog: Create Button');
               if (titleController.text.isNotEmpty) {
                 final title = titleController.text;
                 Navigator.of(context).pop();
@@ -712,11 +750,15 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.of(context).pop(),
+            onPressed: () {
+              debugPrint('Pressed Create New Folder Dialog: Cancel Button');
+              Navigator.of(context).pop();
+            },
             child: const Text('Cancel'),
           ),
           ElevatedButton(
             onPressed: () async {
+              debugPrint('Pressed Create New Folder Dialog: Create Button');
               if (nameController.text.isNotEmpty) {
                 await notesProvider.createFolder(nameController.text);
                 if (mounted) Navigator.of(context).pop();
@@ -737,11 +779,15 @@ class _HomeScreenState extends State<HomeScreen> {
         content: Text('Are you sure you want to delete "${note.title}"?'),
         actions: [
           TextButton(
-            onPressed: () => Navigator.of(context).pop(),
+            onPressed: () {
+              debugPrint('Pressed Delete Note Dialog: Cancel Button');
+              Navigator.of(context).pop();
+            },
             child: const Text('Cancel'),
           ),
           ElevatedButton(
             onPressed: () async {
+              debugPrint('Pressed Delete Note Dialog: Delete Button for note ${note.title}');
               await notesProvider.deleteNote(note);
               if (mounted) Navigator.of(context).pop();
             },

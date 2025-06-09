@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:provider/provider.dart';
 import '../models/note.dart';
 import '../providers/notes_provider.dart';
@@ -192,11 +193,17 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
         content: Text('Are you sure you want to delete "${_titleController.text}"?'),
         actions: [
           TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
+            onPressed: () {
+              debugPrint('Pressed Delete Confirm Dialog: Cancel Button');
+              Navigator.of(context).pop(false);
+            },
             child: const Text('Cancel'),
           ),
           ElevatedButton(
-            onPressed: () => Navigator.of(context).pop(true),
+            onPressed: () {
+              debugPrint('Pressed Delete Confirm Dialog: Delete Button');
+              Navigator.of(context).pop(true);
+            },
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.red,
               foregroundColor: Colors.white,
@@ -218,15 +225,22 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
         content: const Text('You have unsaved changes. Do you want to save before leaving?'),
         actions: [
           TextButton(
-            onPressed: () => Navigator.of(context).pop(true),
+            onPressed: () {
+              debugPrint('Pressed Unsaved Changes Dialog: Discard Button');
+              Navigator.of(context).pop(true);
+            },
             child: const Text('Discard'),
           ),
           TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
+            onPressed: () {
+              debugPrint('Pressed Unsaved Changes Dialog: Cancel Button');
+              Navigator.of(context).pop(false);
+            },
             child: const Text('Cancel'),
           ),
           ElevatedButton(
             onPressed: () async {
+              debugPrint('Pressed Unsaved Changes Dialog: Save Button');
               await _saveNote();
               if (mounted) Navigator.of(context).pop(true);
             },
@@ -309,50 +323,77 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
             _buildToolbarButton(
               icon: Icons.format_bold,
               tooltip: 'Bold',
-              onPressed: () => _insertMarkdown('**', wrapSelection: true),
+              onPressed: () {
+                debugPrint('Pressed Markdown Toolbar: Bold');
+                _insertMarkdown('**', wrapSelection: true);
+              },
             ),
             _buildToolbarButton(
               icon: Icons.format_italic,
               tooltip: 'Italic',
-              onPressed: () => _insertMarkdown('*', wrapSelection: true),
+              onPressed: () {
+                debugPrint('Pressed Markdown Toolbar: Italic');
+                _insertMarkdown('*', wrapSelection: true);
+              },
             ),
             const VerticalDivider(),
             _buildToolbarButton(
               icon: Icons.title,
               tooltip: 'Header 1',
-              onPressed: () => _insertMarkdown('# '),
+              onPressed: () {
+                debugPrint('Pressed Markdown Toolbar: Header 1');
+                _insertMarkdown('# ');
+              },
             ),
             _buildToolbarButton(
               icon: Icons.format_size,
               tooltip: 'Header 2',
-              onPressed: () => _insertMarkdown('## '),
+              onPressed: () {
+                debugPrint('Pressed Markdown Toolbar: Header 2');
+                _insertMarkdown('## ');
+              },
             ),
             const VerticalDivider(),
             _buildToolbarButton(
               icon: Icons.format_list_bulleted,
               tooltip: 'Bullet List',
-              onPressed: () => _insertMarkdown('- '),
+              onPressed: () {
+                debugPrint('Pressed Markdown Toolbar: Bullet List');
+                _insertMarkdown('- ');
+              },
             ),
             _buildToolbarButton(
               icon: Icons.format_list_numbered,
               tooltip: 'Numbered List',
-              onPressed: () => _insertMarkdown('1. '),
+              onPressed: () {
+                debugPrint('Pressed Markdown Toolbar: Numbered List');
+                _insertMarkdown('1. ');
+              },
             ),
             const VerticalDivider(),
             _buildToolbarButton(
               icon: Icons.link,
               tooltip: 'Link',
-              onPressed: () => _insertMarkdown('[', suffix: '](url)'),
+              onPressed: () {
+                debugPrint('Pressed Markdown Toolbar: Link');
+                _insertMarkdown('[', suffix: '](url)');
+              },
             ),
             _buildToolbarButton(
               icon: Icons.code,
               tooltip: 'Code',
-              onPressed: () => _insertMarkdown('`', wrapSelection: true),
+              onPressed: () {
+                debugPrint('Pressed Markdown Toolbar: Code');
+                _insertMarkdown('`', wrapSelection: true);
+              },
             ),
             _buildToolbarButton(
               icon: Icons.format_quote,
               tooltip: 'Quote',
-              onPressed: () => _insertMarkdown('> '),
+              onPressed: () {
+                debugPrint('Pressed Markdown Toolbar: Quote');
+                _insertMarkdown('> ');
+              },
             ),
           ],
         ),
@@ -454,25 +495,37 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
               IconButton(
                 icon: const Icon(Icons.edit),
                 tooltip: 'Edit Mode',
-                onPressed: _togglePreviewMode,
+                onPressed: () {
+                  debugPrint('Pressed Edit Mode Button');
+                  _togglePreviewMode();
+                },
               )
             else
               IconButton(
                 icon: const Icon(Icons.preview),
                 tooltip: 'Preview Mode',
-                onPressed: _togglePreviewMode,
+                onPressed: () {
+                  debugPrint('Pressed Preview Mode Button');
+                  _togglePreviewMode();
+                },
               ),
             const SizedBox(width: 8),
             if (widget.note != null)
               IconButton(
                 icon: const Icon(Icons.delete),
                 tooltip: 'Delete Note',
-                onPressed: _deleteNote,
+                onPressed: () {
+                  debugPrint('Pressed Delete Note Button');
+                  _deleteNote();
+                },
               ),
             IconButton(
               icon: Icon(_isSaving ? Icons.hourglass_empty : Icons.save),
               tooltip: 'Save Note',
-              onPressed: _isSaving ? null : () => _saveNote(),
+              onPressed: _isSaving ? null : () {
+                debugPrint('Pressed Save Note Button');
+                _saveNote();
+              },
             ),
             const SizedBox(width: 8),
           ],
