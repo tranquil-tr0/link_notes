@@ -21,17 +21,41 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
+class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   final TextEditingController _searchController = TextEditingController();
+  bool _isSidebarCollapsed = false;
+  late AnimationController _sidebarAnimationController;
+  late Animation<double> _sidebarAnimation;
   
   @override
   void initState() {
     super.initState();
+    
+    // Initialize animation controller
+    _sidebarAnimationController = AnimationController(
+      duration: const Duration(milliseconds: 250),
+      vsync: this,
+      value: 1.0, // Start with sidebar visible
+    );
+    _sidebarAnimation = CurvedAnimation(
+      parent: _sidebarAnimationController,
+      curve: Curves.easeInOut,
+    );
+    
     // Initialize the vault when the screen loads
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final notesProvider = context.read<NotesProvider>();
       if (!notesProvider.isVaultInitialized) {
         notesProvider.loadVault();
+      }
+      
+      // Check screen size and auto-collapse if needed
+      final screenWidth = MediaQuery.of(context).size.width;
+      if (screenWidth < 768) {
+        setState(() {
+          _isSidebarCollapsed = true;
+        });
+        _sidebarAnimationController.reset();
       }
     });
   }
@@ -39,6 +63,7 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void dispose() {
     _searchController.dispose();
+    _sidebarAnimationController.dispose();
     super.dispose();
   }
 
@@ -187,6 +212,20 @@ class _HomeScreenState extends State<HomeScreen> {
           // Top row: Vault name and actions
           Row(
             children: [
+              IconButton(
+                onPressed: () {
+                  setState(() {
+                    _isSidebarCollapsed = !_isSidebarCollapsed;
+                    if (_isSidebarCollapsed) {
+                      _sidebarAnimationController.reverse();
+                    } else {
+                      _sidebarAnimationController.forward();
+                    }
+                  });
+                },
+                icon: Icon(_isSidebarCollapsed ? Icons.menu : Icons.menu_open),
+                tooltip: _isSidebarCollapsed ? 'Show Sidebar' : 'Hide Sidebar',
+              ),
               const Icon(Icons.folder, size: 24),
               const SizedBox(width: 8),
               Text(
@@ -400,51 +439,111 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildMainContent(NotesProvider notesProvider) {
-    return Row(
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final screenWidth = constraints.maxWidth;
+        final isSmallScreen = screenWidth < 768;
+        
+        // Auto-collapse sidebar on small screens
+        if (isSmallScreen && !_isSidebarCollapsed) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            setState(() {
+              _isSidebarCollapsed = true;
+              _sidebarAnimationController.reverse();
+            });
+          });
+        }
+        
+        if (_isSidebarCollapsed) {
+          // Collapsed sidebar: show only the notes panel
+          return _buildNotesPanel(notesProvider);
+        } else {
+          // Expanded sidebar: show both panels side by side
+          return Row(
+            children: [
+              // Left panel: Folder tree with animation
+              AnimatedBuilder(
+                animation: _sidebarAnimation,
+                builder: (context, child) {
+                  return SizedBox(
+                    width: 280 * _sidebarAnimation.value,
+                    child: Opacity(
+                      opacity: _sidebarAnimation.value,
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).colorScheme.surface,
+                          border: Border(
+                            right: BorderSide(
+                              color: Theme.of(context).colorScheme.outline.withOpacity(0.2),
+                            ),
+                          ),
+                        ),
+                        child: _sidebarAnimation.value > 0.3
+                            ? _buildSidebarContent(notesProvider)
+                            : const SizedBox(),
+                      ),
+                    ),
+                  );
+                },
+              ),
+              // Right panel: Notes grid
+              Expanded(
+                child: _buildNotesPanel(notesProvider),
+              ),
+            ],
+          );
+        }
+      },
+    );
+  }
+
+  Widget _buildSidebarContent(NotesProvider notesProvider) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Left panel: Folder tree
-        SizedBox(
-          width: 280,
-          child: Container(
-            decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.surface,
-              border: Border(
-                right: BorderSide(
-                  color: Theme.of(context).colorScheme.outline.withOpacity(0.2),
+        Padding(
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            children: [
+              const Icon(Icons.folder_outlined, size: 20),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'Folders',
+                  style: Theme.of(context).textTheme.titleMedium,
                 ),
               ),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Row(
-                    children: [
-                      const Icon(Icons.folder_outlined, size: 20),
-                      const SizedBox(width: 8),
-                      Text(
-                        'Folders',
-                        style: Theme.of(context).textTheme.titleMedium,
-                      ),
-                    ],
-                  ),
+              // Close button for small screens
+              if (MediaQuery.of(context).size.width < 768)
+                IconButton(
+                  onPressed: () {
+                    setState(() {
+                      _isSidebarCollapsed = true;
+                      _sidebarAnimationController.reverse();
+                    });
+                  },
+                  icon: const Icon(Icons.close, size: 18),
+                  tooltip: 'Close sidebar',
                 ),
-                const Divider(height: 1),
-                Expanded(
-                  child: FolderTreeWidget(
-                    rootFolder: notesProvider.rootFolder,
-                    currentFolder: notesProvider.currentFolder,
-                    onFolderSelected: (folder) => notesProvider.loadFolder(folder),
-                  ),
-                ),
-              ],
-            ),
+            ],
           ),
         ),
-        // Right panel: Notes grid
+        const Divider(height: 1),
         Expanded(
-          child: _buildNotesPanel(notesProvider),
+          child: FolderTreeWidget(
+            rootFolder: notesProvider.rootFolder,
+            currentFolder: notesProvider.currentFolder,
+            onFolderSelected: (folder) {
+              notesProvider.loadFolder(folder);
+              // Auto-close sidebar on small screens after selection
+              if (MediaQuery.of(context).size.width < 768) {
+                setState(() {
+                  _isSidebarCollapsed = true;
+                  _sidebarAnimationController.reverse();
+                });
+              }
+            },
+          ),
         ),
       ],
     );
