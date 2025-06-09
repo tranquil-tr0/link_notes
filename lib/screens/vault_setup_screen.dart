@@ -25,12 +25,14 @@ class _VaultSetupScreenState extends State<VaultSetupScreen> {
     _setDefaultDirectory();
   }
 
-  /// Set the default directory to Documents/LinkNotesVault
+  /// Set the default directory to emulated Documents/LinkNotesVault
   Future<void> _setDefaultDirectory() async {
     try {
-      final documentsDir = await getApplicationDocumentsDirectory();
+      // Use emulated storage Documents directory instead of app-specific directory
+      // TODO: see if it is possible to make this work for iOS, since I think this path will break iOS
+      const defaultPath = '/storage/emulated/0/Documents/Link Notes';
       setState(() {
-        _selectedDirectory = '${documentsDir.path}/LinkNotesVault';
+        _selectedDirectory = defaultPath;
       });
     } catch (e) {
       setState(() {
@@ -213,13 +215,14 @@ class _VaultSetupScreenState extends State<VaultSetupScreen> {
               ElevatedButton.icon(
                 onPressed: _isLoading ? null : _setDefaultDirectory,
                 icon: const Icon(Icons.restore),
-                label: const Text('Use Default'),
+                label: const Text('Default'),
               ),
             ],
           ),
           const SizedBox(height: 8),
           Text(
-            'The vault will be created at this location. Make sure you have write permissions.',
+            'Your notes will be read from and stored here. '
+            'We suggest choosing somewhere inside your Obsidian vault or your Obsidian vault.',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
               color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
             ),
@@ -270,7 +273,7 @@ class _VaultSetupScreenState extends State<VaultSetupScreen> {
                     width: 20,
                     child: CircularProgressIndicator(strokeWidth: 2),
                   )
-                : const Text('Create Vault'),
+                : const Text('Confirm Vault Directory'),
           ),
         ),
         const SizedBox(height: 16),
