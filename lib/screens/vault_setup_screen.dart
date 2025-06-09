@@ -50,6 +50,7 @@ class _VaultSetupScreenState extends State<VaultSetupScreen> {
       final result = await FilePicker.platform.getDirectoryPath(
         dialogTitle: 'Select Vault Directory',
         lockParentWindow: true,
+        initialDirectory: '/storage/emulated',
       );
 
       if (result != null) {

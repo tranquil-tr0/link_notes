@@ -9,8 +9,17 @@ import 'services/file_service.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
-  // Initialize settings service
-  await SettingsService.instance.initialize();
+  // Add a small delay to ensure platform channels are ready
+  await Future.delayed(const Duration(milliseconds: 50));
+  
+  try {
+    // Initialize settings service with error handling
+    await SettingsService.instance.initialize();
+  } catch (e) {
+    // Log the error but don't crash the app
+    debugPrint('Warning: Failed to initialize SettingsService: $e');
+    // The app can still function with default settings
+  }
   
   runApp(const LinkNotesApp());
 }

@@ -22,14 +22,26 @@ class FileService {
     if (_initialized) return;
 
     try {
-      // Initialize settings service first
-      await SettingsService.instance.initialize();
+      // Try to initialize settings service first, but don't fail if it doesn't work
+      try {
+        await SettingsService.instance.initialize();
+      } catch (settingsError) {
+        // Log warning but continue with default behavior
+        print('Warning: SettingsService initialization failed: $settingsError');
+      }
       
       if (customVaultPath != null) {
         _vaultPath = customVaultPath;
       } else {
         // Try to get vault path from settings first
-        final savedVaultPath = SettingsService.instance.getVaultDirectory();
+        String? savedVaultPath;
+        try {
+          savedVaultPath = SettingsService.instance.getVaultDirectory();
+        } catch (e) {
+          // Settings service not available, use default
+          savedVaultPath = null;
+        }
+        
         if (savedVaultPath != null && savedVaultPath.isNotEmpty) {
           _vaultPath = savedVaultPath;
         } else {
@@ -77,12 +89,22 @@ class FileService {
 
   /// Check if vault directory is configured
   bool hasVaultDirectoryConfigured() {
-    return SettingsService.instance.hasVaultDirectory();
+    try {
+      return SettingsService.instance.hasVaultDirectory();
+    } catch (e) {
+      // If settings service is not available, assume no vault directory is configured
+      return false;
+    }
   }
 
   /// Check if this is the first launch
   bool isFirstLaunch() {
-    return SettingsService.instance.isFirstLaunch();
+    try {
+      return SettingsService.instance.isFirstLaunch();
+    } catch (e) {
+      // If settings service is not available, assume it's the first launch
+      return true;
+    }
   }
 
   /// Creates default folders in the vault
