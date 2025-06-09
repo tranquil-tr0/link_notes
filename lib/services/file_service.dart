@@ -57,9 +57,6 @@ class FileService {
         await vaultDir.create(recursive: true);
       }
 
-      // Create default folders
-      await _createDefaultFolders();
-
       _initialized = true;
     } catch (e) {
       throw Exception('Failed to initialize FileService: $e');
@@ -77,9 +74,6 @@ class FileService {
       if (!await vaultDir.exists()) {
         await vaultDir.create(recursive: true);
       }
-
-      // Create default folders if they don't exist
-      await _createDefaultFolders();
 
       _initialized = true;
     } catch (e) {
@@ -104,19 +98,6 @@ class FileService {
     } catch (e) {
       // If settings service is not available, assume it's the first launch
       return true;
-    }
-  }
-
-  /// Creates default folders in the vault
-  Future<void> _createDefaultFolders() async {
-    final defaultFolders = ['Inbox', 'Archive', 'Templates'];
-    
-    for (final folderName in defaultFolders) {
-      final folderPath = '$_vaultPath/$folderName';
-      final folder = Directory(folderPath);
-      if (!await folder.exists()) {
-        await folder.create(recursive: true);
-      }
     }
   }
 

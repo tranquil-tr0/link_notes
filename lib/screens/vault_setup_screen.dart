@@ -55,9 +55,8 @@ class _VaultSetupScreenState extends State<VaultSetupScreen> {
 
       if (result != null) {
         // Create LinkNotesVault subdirectory in selected path
-        final vaultPath = '$result/LinkNotesVault';
         setState(() {
-          _selectedDirectory = vaultPath;
+          _selectedDirectory = result;
         });
       }
     } catch (e) {
