@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:provider/provider.dart';
 import '../providers/notes_provider.dart';
 import '../models/note.dart';
-import '../widgets/folder_tree_widget.dart';
 import 'note_editor_screen.dart';
 
 /// HomeScreen serves as the main interface for the notes app
@@ -403,115 +403,9 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildMainContent(NotesProvider notesProvider) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final screenWidth = constraints.maxWidth;
-        final isSmallScreen = screenWidth < 768;
-        
-        // Auto-collapse sidebar on small screens
-        if (isSmallScreen && !_isSidebarCollapsed) {
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            setState(() {
-              _isSidebarCollapsed = true;
-              _sidebarAnimationController.reverse();
-            });
-          });
-        }
-        
-        if (_isSidebarCollapsed) {
-          // Collapsed sidebar: show only the notes panel
-          return _buildNotesPanel(notesProvider);
-        } else {
-          // Expanded sidebar: show both panels side by side
-          return Row(
-            children: [
-              // Left panel: Folder tree with animation
-              AnimatedBuilder(
-                animation: _sidebarAnimation,
-                builder: (context, child) {
-                  return SizedBox(
-                    width: 280 * _sidebarAnimation.value,
-                    child: Opacity(
-                      opacity: _sidebarAnimation.value,
-                      child: Container(
-                        decoration: BoxDecoration(
-                          color: Theme.of(context).colorScheme.surface,
-                          border: Border(
-                            right: BorderSide(
-                              color: Theme.of(context).colorScheme.outline.withOpacity(0.2),
-                            ),
-                          ),
-                        ),
-                        child: _sidebarAnimation.value > 0.3
-                            ? _buildSidebarContent(notesProvider)
-                            : const SizedBox(),
-                      ),
-                    ),
-                  );
-                },
-              ),
-              // Right panel: Notes grid
-              Expanded(
-                child: _buildNotesPanel(notesProvider),
-              ),
-            ],
-          );
-        }
-      },
-    );
+    return _buildNotesPanel(notesProvider);
   }
 
-  Widget _buildSidebarContent(NotesProvider notesProvider) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.all(16),
-          child: Row(
-            children: [
-              const Icon(Icons.folder_outlined, size: 20),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  'Folders',
-                  style: Theme.of(context).textTheme.titleMedium,
-                ),
-              ),
-              // Close button for small screens
-              if (MediaQuery.of(context).size.width < 768)
-                IconButton(
-                  onPressed: () {
-                    setState(() {
-                      _isSidebarCollapsed = true;
-                      _sidebarAnimationController.reverse();
-                    });
-                  },
-                  icon: const Icon(Icons.close, size: 18),
-                  tooltip: 'Close sidebar',
-                ),
-            ],
-          ),
-        ),
-        const Divider(height: 1),
-        Expanded(
-          child: FolderTreeWidget(
-            rootFolder: notesProvider.rootFolder,
-            currentFolder: notesProvider.currentFolder,
-            onFolderSelected: (folder) {
-              notesProvider.loadFolder(folder);
-              // Auto-close sidebar on small screens after selection
-              if (MediaQuery.of(context).size.width < 768) {
-                setState(() {
-                  _isSidebarCollapsed = true;
-                  _sidebarAnimationController.reverse();
-                });
-              }
-            },
-          ),
-        ),
-      ],
-    );
-  }
 
   Widget _buildNotesPanel(NotesProvider notesProvider) {
     return Container(

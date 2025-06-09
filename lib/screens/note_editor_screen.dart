@@ -477,7 +477,7 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
             const SizedBox(width: 8),
           ],
         ),
-        body: f(
+        body: SafeArea(
           child: Column(
             children: [
               // Title field
