@@ -87,11 +87,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
       await testFile.writeAsString('test');
       await testFile.delete();
 
-      // Copy existing vault to new location if old vault exists
-      if (_currentVaultDirectory != null && await Directory(_currentVaultDirectory!).exists()) {
-        await _copyVaultContents(_currentVaultDirectory!, _newVaultDirectory!);
-      }
-
       // Update settings
       await _settingsService.setVaultDirectory(_newVaultDirectory!);
 
@@ -154,29 +149,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ],
       ),
     ) ?? false;
-  }
-
-  Future<void> _copyVaultContents(String sourcePath, String destinationPath) async {
-    final sourceDir = Directory(sourcePath);
-    final destDir = Directory(destinationPath);
-
-    if (!await sourceDir.exists()) return;
-    if (!await destDir.exists()) {
-      await destDir.create(recursive: true);
-    }
-
-    await for (final entity in sourceDir.list(recursive: true)) {
-      final relativePath = entity.path.substring(sourcePath.length + 1);
-      final newPath = '$destinationPath/$relativePath';
-
-      if (entity is File) {
-        final newFile = File(newPath);
-        await newFile.parent.create(recursive: true);
-        await entity.copy(newPath);
-      } else if (entity is Directory) {
-        await Directory(newPath).create(recursive: true);
-      }
-    }
   }
 
   @override
@@ -299,7 +271,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
             const SizedBox(height: 8),
             Text(
-              'Changing the vault directory will move all your notes to the new location.',
+              'Your notes will be those in the selected directory. '
+              'Your current notes will not be affected or moved.',
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
                 color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
               ),
