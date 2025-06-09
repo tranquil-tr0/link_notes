@@ -45,10 +45,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
       );
 
       if (result != null) {
-        // Create LinkNotesVault subdirectory in selected path
-        final vaultPath = '$result/LinkNotesVault';
         setState(() {
-          _newVaultDirectory = vaultPath;
+          _newVaultDirectory = result;
         });
       }
     } catch (e) {
