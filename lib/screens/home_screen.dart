@@ -21,26 +21,12 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
+class _HomeScreenState extends State<HomeScreen> {
   final TextEditingController _searchController = TextEditingController();
-  bool _isSidebarCollapsed = false;
-  late AnimationController _sidebarAnimationController;
-  late Animation<double> _sidebarAnimation;
   
   @override
   void initState() {
     super.initState();
-    
-    // Initialize animation controller
-    _sidebarAnimationController = AnimationController(
-      duration: const Duration(milliseconds: 250),
-      vsync: this,
-      value: 1.0, // Start with sidebar visible
-    );
-    _sidebarAnimation = CurvedAnimation(
-      parent: _sidebarAnimationController,
-      curve: Curves.easeInOut,
-    );
     
     // Initialize the vault when the screen loads
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -48,22 +34,12 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
       if (!notesProvider.isVaultInitialized) {
         notesProvider.loadVault();
       }
-      
-      // Check screen size and auto-collapse if needed
-      final screenWidth = MediaQuery.of(context).size.width;
-      if (screenWidth < 768) {
-        setState(() {
-          _isSidebarCollapsed = true;
-        });
-        _sidebarAnimationController.reset();
-      }
     });
   }
 
   @override
   void dispose() {
     _searchController.dispose();
-    _sidebarAnimationController.dispose();
     super.dispose();
   }
 
@@ -214,20 +190,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
           // Top row: Vault name and actions
           Row(
             children: [
-              IconButton(
-                onPressed: () {
-                  setState(() {
-                    _isSidebarCollapsed = !_isSidebarCollapsed;
-                    if (_isSidebarCollapsed) {
-                      _sidebarAnimationController.reverse();
-                    } else {
-                      _sidebarAnimationController.forward();
-                    }
-                  });
-                },
-                icon: Icon(_isSidebarCollapsed ? Icons.menu : Icons.menu_open),
-                tooltip: _isSidebarCollapsed ? 'Show Sidebar' : 'Hide Sidebar',
-              ),
               const Icon(Icons.folder, size: 24),
               const SizedBox(width: 8),
               Text(
