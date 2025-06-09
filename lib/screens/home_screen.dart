@@ -70,22 +70,24 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Consumer<NotesProvider>(
-        builder: (context, notesProvider, child) {
-          if (notesProvider.isInitializing) {
-            return _buildInitializingScreen();
-          }
+      body: SafeArea(
+        child: Consumer<NotesProvider>(
+          builder: (context, notesProvider, child) {
+            if (notesProvider.isInitializing) {
+              return _buildInitializingScreen();
+            }
 
-          if (notesProvider.error != null) {
-            return _buildErrorScreen(notesProvider);
-          }
+            if (notesProvider.error != null) {
+              return _buildErrorScreen(notesProvider);
+            }
 
-          if (!notesProvider.isVaultInitialized) {
-            return _buildWelcomeScreen(notesProvider);
-          }
+            if (!notesProvider.isVaultInitialized) {
+              return _buildWelcomeScreen(notesProvider);
+            }
 
-          return _buildMainScreen(notesProvider);
-        },
+            return _buildMainScreen(notesProvider);
+          },
+        ),
       ),
       floatingActionButton: Consumer<NotesProvider>(
         builder: (context, notesProvider, child) {

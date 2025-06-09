@@ -477,44 +477,46 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
             const SizedBox(width: 8),
           ],
         ),
-        body: Column(
-          children: [
-            // Title field
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.surface,
-                border: Border(
-                  bottom: BorderSide(
-                    color: Theme.of(context).colorScheme.outline.withOpacity(0.2),
+        body: SafeArea(
+          child: Column(
+            children: [
+              // Title field
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.surface,
+                  border: Border(
+                    bottom: BorderSide(
+                      color: Theme.of(context).colorScheme.outline.withOpacity(0.2),
+                    ),
                   ),
                 ),
-              ),
-              child: TextField(
-                controller: _titleController,
-                decoration: const InputDecoration(
-                  hintText: 'Note title...',
-                  border: InputBorder.none,
-                  contentPadding: EdgeInsets.zero,
+                child: TextField(
+                  controller: _titleController,
+                  decoration: const InputDecoration(
+                    hintText: 'Note title...',
+                    border: InputBorder.none,
+                    contentPadding: EdgeInsets.zero,
+                  ),
+                  style: Theme.of(context).textTheme.headlineSmall,
+                  maxLines: 1,
+                  textInputAction: TextInputAction.next,
+                  onSubmitted: (_) => _contentFocusNode.requestFocus(),
                 ),
-                style: Theme.of(context).textTheme.headlineSmall,
-                maxLines: 1,
-                textInputAction: TextInputAction.next,
-                onSubmitted: (_) => _contentFocusNode.requestFocus(),
               ),
-            ),
-            
-            // Markdown toolbar (only in edit mode)
-            if (!_isPreviewMode) _buildMarkdownToolbar(),
-            
-            // Content area
-            Expanded(
-              child: _isPreviewMode ? _buildPreviewMode() : _buildEditMode(),
-            ),
-            
-            // Status bar
-            _buildStatusBar(),
-          ],
+              
+              // Markdown toolbar (only in edit mode)
+              if (!_isPreviewMode) _buildMarkdownToolbar(),
+              
+              // Content area
+              Expanded(
+                child: _isPreviewMode ? _buildPreviewMode() : _buildEditMode(),
+              ),
+              
+              // Status bar
+              _buildStatusBar(),
+            ],
+          ),
         ),
       ),
     );
