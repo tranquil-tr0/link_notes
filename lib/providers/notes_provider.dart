@@ -359,16 +359,6 @@ class NotesProvider extends ChangeNotifier {
     notifyListeners();
   }
   
-  /// Get a note by ID
-  Future<Note?> getNoteById(String noteId) async {
-    try {
-      return await _fileService.readNoteById(noteId);
-    } catch (e) {
-      _setError('Failed to get note: $e');
-      return null;
-    }
-  }
-  
   // ==================== FOLDER OPERATIONS ====================
   
   /// Create a new folder

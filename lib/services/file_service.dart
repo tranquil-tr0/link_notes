@@ -45,9 +45,9 @@ class FileService {
         if (savedVaultPath != null && savedVaultPath.isNotEmpty) {
           _vaultPath = savedVaultPath;
         } else {
-          // Fallback to default location
+          // Fallback to default location in documents directory
           final documentsDir = await getApplicationDocumentsDirectory();
-          _vaultPath = '${documentsDir.path}/LinkNotesVault';
+          _vaultPath = documentsDir.path;
         }
       }
 
@@ -126,23 +126,20 @@ class FileService {
     _ensureInitialized();
 
     try {
-      // Generate unique ID
-      final id = _generateNoteId(title);
-      
-      // Determine file path
+      // Determine file path - always place directly in vault directory
       String filePath;
       if (customPath != null) {
         filePath = customPath;
-      } else if (folderId != null) {
-        filePath = '$_vaultPath/$folderId/$id.md';
       } else {
-        filePath = '$_vaultPath/Inbox/$id.md';
+        // Generate unique file name from title
+        final fileName = await _generateUniqueFileName(title, _vaultPath);
+        filePath = '$_vaultPath/$fileName.md';
       }
 
-      // Create note instance
+      // Create note instance with filename as ID
       final now = DateTime.now();
       final note = Note(
-        id: id,
+        id: filePath.split('/').last.replaceAll('.md', ''),
         title: title,
         content: content,
         filePath: filePath,
@@ -175,18 +172,6 @@ class FileService {
     }
   }
 
-  /// Reads a note by ID
-  Future<Note?> readNoteById(String noteId) async {
-    _ensureInitialized();
-
-    try {
-      final rootFolder = await getRootFolder();
-      return rootFolder.findNote(noteId);
-    } catch (e) {
-      throw Exception('Failed to read note by ID: $e');
-    }
-  }
-
   /// Updates an existing note
   Future<Note> updateNote(Note note, {
     String? newTitle,
@@ -195,9 +180,27 @@ class FileService {
     _ensureInitialized();
 
     try {
+      // Check if title changed and filename needs to be updated
+      String filePath = note.filePath;
+      if (newTitle != null && newTitle != note.title) {
+        final directory = note.directoryPath;
+        final newFileName = await _generateUniqueFileName(newTitle, directory);
+        final newFilePath = '$directory/$newFileName.md';
+        
+        // If the filename would change, move the file
+        if (newFilePath != note.filePath) {
+          final oldFile = File(note.filePath);
+          if (await oldFile.exists()) {
+            await oldFile.rename(newFilePath);
+            filePath = newFilePath;
+          }
+        }
+      }
+
       final updatedNote = note.copyWith(
         title: newTitle ?? note.title,
         content: newContent ?? note.content,
+        filePath: filePath,
         modifiedAt: DateTime.now(),
       );
 
@@ -231,7 +234,8 @@ class FileService {
 
     try {
       final oldFile = File(note.filePath);
-      final newFilePath = '$newFolderPath/${note.fileName}.md';
+      final fileName = await _generateUniqueFileName(note.title, newFolderPath);
+      final newFilePath = '$newFolderPath/$fileName.md';
       final newFile = File(newFilePath);
 
       // Create destination directory if it doesn't exist
@@ -428,15 +432,44 @@ class FileService {
 
   // ==================== UTILITY METHODS ====================
 
-  /// Generates a unique ID for a note based on title and timestamp
-  String _generateNoteId(String title) {
+  /// Generates a file name from the note title
+  String _generateFileName(String title) {
+    // Sanitize the title to be a valid filename
     final sanitizedTitle = title
-        .replaceAll(RegExp(r'[^\w\s-]'), '')
-        .replaceAll(RegExp(r'\s+'), '-')
-        .toLowerCase();
+        .replaceAll(RegExp(r'[<>:"/\\|?*]'), '') // Remove invalid file characters
+        .replaceAll(RegExp(r'\s+'), ' ') // Normalize whitespace
+        .trim();
     
-    final timestamp = DateTime.now().millisecondsSinceEpoch;
-    return '${sanitizedTitle}_$timestamp';
+    // If the sanitized title is empty, use a default name
+    if (sanitizedTitle.isEmpty) {
+      return 'Untitled';
+    }
+    
+    return sanitizedTitle;
+  }
+
+  /// Generates a unique file name by checking for existing files
+  Future<String> _generateUniqueFileName(String title, String directory) async {
+    final baseFileName = _generateFileName(title);
+    final baseFile = File('$directory/$baseFileName.md');
+    
+    // If the base filename doesn't exist, use it
+    if (!await baseFile.exists()) {
+      return baseFileName;
+    }
+    
+    // If it exists, append a number to make it unique
+    int counter = 1;
+    while (true) {
+      final numberedFileName = '$baseFileName $counter';
+      final numberedFile = File('$directory/$numberedFileName.md');
+      
+      if (!await numberedFile.exists()) {
+        return numberedFileName;
+      }
+      
+      counter++;
+    }
   }
 
   /// Checks if the vault is properly initialized
