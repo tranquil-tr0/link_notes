@@ -1,8 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
-import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
 import '../models/note.dart';
 import '../providers/notes_provider.dart';
 
@@ -564,29 +562,23 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
     
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
-      child: MarkdownWidget(
-        data: content,
-        config: MarkdownConfig(
-          configs: [
-            const PConfig(
-              textStyle: TextStyle(
-                fontSize: 16,
-                height: 1.5,
-              ),
-            ),
-            const H1Config(
-              style: TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const H2Config(
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ],
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Theme.of(context).colorScheme.surface,
+          border: Border.all(
+            color: Theme.of(context).colorScheme.outline.withOpacity(0.2),
+          ),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: SelectableText(
+          content,
+          style: const TextStyle(
+            fontSize: 16,
+            height: 1.5,
+            fontFamily: 'serif',
+          ),
         ),
       ),
     );

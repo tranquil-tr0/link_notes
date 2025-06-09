@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../providers/notes_provider.dart';
 import '../models/note.dart';
 import '../widgets/folder_tree_widget.dart';
+import 'note_editor_screen.dart';
 
 /// HomeScreen serves as the main interface for the notes app
 /// 
@@ -546,7 +547,7 @@ class _HomeScreenState extends State<HomeScreen> {
       child: InkWell(
         onTap: () => notesProvider.selectNote(note),
         onDoubleTap: () {
-          // TODO: Navigate to note editor
+          _navigateToNoteEditor(note);
         },
         borderRadius: BorderRadius.circular(12),
         child: Padding(
@@ -661,7 +662,7 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
         const SizedBox(height: 16),
         FloatingActionButton(
-          onPressed: () => _showCreateNoteDialog(notesProvider),
+          onPressed: () => _createNewNote(),
           heroTag: "note",
           child: const Icon(Icons.add),
         ),
@@ -687,7 +688,7 @@ class _HomeScreenState extends State<HomeScreen> {
   void _handleNoteAction(String action, Note note, NotesProvider notesProvider) {
     switch (action) {
       case 'edit':
-        // TODO: Navigate to note editor
+        _navigateToNoteEditor(note);
         break;
       case 'delete':
         _showDeleteNoteDialog(note, notesProvider);
@@ -716,13 +717,18 @@ class _HomeScreenState extends State<HomeScreen> {
             child: const Text('Cancel'),
           ),
           ElevatedButton(
-            onPressed: () async {
+            onPressed: () {
               if (titleController.text.isNotEmpty) {
-                await notesProvider.createNote(
-                  title: titleController.text,
-                  content: '',
+                final title = titleController.text;
+                Navigator.of(context).pop();
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (context) => NoteEditorScreen(
+                      initialTitle: title,
+                      initialContent: '',
+                    ),
+                  ),
                 );
-                if (mounted) Navigator.of(context).pop();
               }
             },
             child: const Text('Create'),
@@ -791,5 +797,33 @@ class _HomeScreenState extends State<HomeScreen> {
         ],
       ),
     );
+  }
+
+  void _navigateToNoteEditor(Note? note) async {
+    final result = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(
+        builder: (context) => NoteEditorScreen(note: note),
+      ),
+    );
+    
+    // Refresh the current folder after returning from editor
+    if (result != null && mounted) {
+      final notesProvider = context.read<NotesProvider>();
+      notesProvider.refreshCurrentFolder();
+    }
+  }
+
+  void _createNewNote() async {
+    final result = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(
+        builder: (context) => const NoteEditorScreen(),
+      ),
+    );
+    
+    // Refresh the current folder after returning from editor
+    if (result != null && mounted) {
+      final notesProvider = context.read<NotesProvider>();
+      notesProvider.refreshCurrentFolder();
+    }
   }
 }
