@@ -1,1 +1,2 @@
 - [ ] test the use default directory
+- [ ] test if moving vault will move notes; if not remove the text that says it will
