@@ -112,6 +112,35 @@ class NotesProvider extends ChangeNotifier {
       _setInitializing(false);
     }
   }
+
+  /// Change the vault directory and reinitialize
+  Future<void> changeVaultDirectory(String newVaultPath) async {
+    _setInitializing(true);
+    _clearError();
+    
+    try {
+      // Clear current state
+      clearState();
+      
+      // Change vault directory in file service
+      await _fileService.changeVaultDirectory(newVaultPath);
+      
+      // Load the new root folder
+      _rootFolder = await _fileService.getRootFolder();
+      
+      // Set current folder to root
+      _currentFolder = _rootFolder;
+      _currentPath = [];
+      _breadcrumbs = [];
+      _notes = _currentFolder?.notes ?? [];
+      
+      notifyListeners();
+    } catch (e) {
+      _setError('Failed to change vault directory: $e');
+    } finally {
+      _setInitializing(false);
+    }
+  }
   
   /// Refresh the current folder from the file system
   Future<void> refreshCurrentFolder() async {

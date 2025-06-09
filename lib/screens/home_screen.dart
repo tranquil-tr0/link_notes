@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart';
 import 'package:provider/provider.dart';
 import '../providers/notes_provider.dart';
 import '../models/note.dart';
 import 'note_editor_screen.dart';
+import 'settings_screen.dart';
 
 /// HomeScreen serves as the main interface for the notes app
 /// 
@@ -216,7 +216,11 @@ class _HomeScreenState extends State<HomeScreen> {
               IconButton(
                 onPressed: () {
                   debugPrint('Pressed Settings Button');
-                  // TODO: Open settings
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (context) => const SettingsScreen(),
+                    ),
+                  );
                 },
                 icon: const Icon(Icons.settings),
                 tooltip: 'Settings',

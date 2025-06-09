@@ -2,8 +2,16 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'providers/notes_provider.dart';
 import 'screens/home_screen.dart';
+import 'screens/vault_setup_screen.dart';
+import 'services/settings_service.dart';
+import 'services/file_service.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  
+  // Initialize settings service
+  await SettingsService.instance.initialize();
+  
   runApp(const LinkNotesApp());
 }
 
@@ -74,9 +82,68 @@ class LinkNotesApp extends StatelessWidget {
           ),
         ),
         themeMode: ThemeMode.system,
-        home: const HomeScreen(),
+        home: const AppRouter(),
       ),
     );
+  }
+}
+
+class AppRouter extends StatefulWidget {
+  const AppRouter({super.key});
+
+  @override
+  State<AppRouter> createState() => _AppRouterState();
+}
+
+class _AppRouterState extends State<AppRouter> {
+  bool _isFirstLaunch = true;
+  bool _isCheckingSetup = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkSetupStatus();
+  }
+
+  void _checkSetupStatus() async {
+    try {
+      final fileService = FileService.instance;
+      final isFirstLaunch = fileService.isFirstLaunch();
+      final hasVaultDirectory = fileService.hasVaultDirectoryConfigured();
+      
+      setState(() {
+        _isFirstLaunch = isFirstLaunch || !hasVaultDirectory;
+        _isCheckingSetup = false;
+      });
+    } catch (e) {
+      setState(() {
+        _isFirstLaunch = true;
+        _isCheckingSetup = false;
+      });
+    }
+  }
+
+  void _onSetupComplete() {
+    setState(() {
+      _isFirstLaunch = false;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_isCheckingSetup) {
+      return const Scaffold(
+        body: Center(
+          child: CircularProgressIndicator(),
+        ),
+      );
+    }
+
+    if (_isFirstLaunch) {
+      return VaultSetupScreen(onSetupComplete: _onSetupComplete);
+    }
+
+    return const HomeScreen();
   }
 }
 

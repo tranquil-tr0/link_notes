@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:path_provider/path_provider.dart';
 import '../models/note.dart';
 import '../models/folder.dart';
+import 'settings_service.dart';
 
 class FileService {
   static FileService? _instance;
@@ -21,11 +22,21 @@ class FileService {
     if (_initialized) return;
 
     try {
+      // Initialize settings service first
+      await SettingsService.instance.initialize();
+      
       if (customVaultPath != null) {
         _vaultPath = customVaultPath;
       } else {
-        final documentsDir = await getApplicationDocumentsDirectory();
-        _vaultPath = '${documentsDir.path}/LinkNotesVault';
+        // Try to get vault path from settings first
+        final savedVaultPath = SettingsService.instance.getVaultDirectory();
+        if (savedVaultPath != null && savedVaultPath.isNotEmpty) {
+          _vaultPath = savedVaultPath;
+        } else {
+          // Fallback to default location
+          final documentsDir = await getApplicationDocumentsDirectory();
+          _vaultPath = '${documentsDir.path}/LinkNotesVault';
+        }
       }
 
       // Create vault directory if it doesn't exist
@@ -41,6 +52,37 @@ class FileService {
     } catch (e) {
       throw Exception('Failed to initialize FileService: $e');
     }
+  }
+
+  /// Change the vault directory and reinitialize
+  Future<void> changeVaultDirectory(String newVaultPath) async {
+    try {
+      _initialized = false;
+      _vaultPath = newVaultPath;
+      
+      // Create new vault directory if it doesn't exist
+      final vaultDir = Directory(_vaultPath);
+      if (!await vaultDir.exists()) {
+        await vaultDir.create(recursive: true);
+      }
+
+      // Create default folders if they don't exist
+      await _createDefaultFolders();
+
+      _initialized = true;
+    } catch (e) {
+      throw Exception('Failed to change vault directory: $e');
+    }
+  }
+
+  /// Check if vault directory is configured
+  bool hasVaultDirectoryConfigured() {
+    return SettingsService.instance.hasVaultDirectory();
+  }
+
+  /// Check if this is the first launch
+  bool isFirstLaunch() {
+    return SettingsService.instance.isFirstLaunch();
   }
 
   /// Creates default folders in the vault
