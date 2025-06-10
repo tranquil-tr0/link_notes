@@ -7,3 +7,5 @@
 - [ ] dynamic markdown editor - implement proper editor
 - [ ] flutter_staggered_grid_view notes selector - implement notes selector (directory_screen)
 - [ ] fix inconsistency in notes count
+- [ ] make search box smaller
+- [ ] fix search functionality
