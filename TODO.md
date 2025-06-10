@@ -10,3 +10,4 @@
 - [ ] make search box smaller
 - [ ] fix search functionality
 - [x] remove status bar
+- [ ] improve implementation of Widget _buildVaultStats (the pill) to do less function calling if easy enough

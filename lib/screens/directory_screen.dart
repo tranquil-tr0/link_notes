@@ -324,75 +324,109 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
         final totalNotes = snapshot.data?['totalNotes'] ?? 0;
         final totalFolders = snapshot.data?['totalFolders'] ?? 0;
         
-        return GestureDetector(
-          onTap: () {
-            setState(() {
-              _isStatsExpanded = !_isStatsExpanded;
-            });
-          },
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 200),
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.primaryContainer,
-              borderRadius: BorderRadius.circular(16),
+        return Stack(
+          clipBehavior: Clip.none,
+          children: [
+            // Base collapsed state - always visible
+            GestureDetector(
+              onTap: () {
+                setState(() {
+                  _isStatsExpanded = !_isStatsExpanded;
+                });
+              },
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.primaryContainer,
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Text(
+                  '$totalNotes notes',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: Theme.of(context).colorScheme.onPrimaryContainer,
+                  ),
+                ),
+              ),
             ),
-            child: _isStatsExpanded
-                ? FutureBuilder<List<dynamic>>(
-                    future: Future.wait([
-                      vaultProvider.getCurrentNotes(),
-                      vaultProvider.getCurrentFolders(),
-                    ]),
-                    builder: (context, currentSnapshot) {
-                      final currentNotes = currentSnapshot.hasData
-                          ? (currentSnapshot.data![0] as List).length
-                          : 0;
-                      final currentFolders = currentSnapshot.hasData
-                          ? (currentSnapshot.data![1] as List).length
-                          : 0;
-                      
-                      return Column(
-                        mainAxisSize: MainAxisSize.min,
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            '$totalNotes total notes',
-                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              color: Theme.of(context).colorScheme.onPrimaryContainer,
-                            ),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            '$currentNotes notes here',
-                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              color: Theme.of(context).colorScheme.onPrimaryContainer,
-                            ),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            '$totalFolders total folders',
-                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              color: Theme.of(context).colorScheme.onPrimaryContainer,
-                            ),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            '$currentFolders folders here',
-                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              color: Theme.of(context).colorScheme.onPrimaryContainer,
-                            ),
-                          ),
-                        ],
-                      );
+            // Expanded overlay state
+            if (_isStatsExpanded)
+              Positioned(
+                top: 0,
+                left: -7,
+
+                  child: GestureDetector(
+                    onTap: () {
+                      setState(() {
+                        _isStatsExpanded = false;
+                      });
                     },
-                  )
-                : Text(
-                    '$totalNotes notes',
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: Theme.of(context).colorScheme.onPrimaryContainer,
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).colorScheme.primaryContainer,
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.1),
+                          blurRadius: 8,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: FutureBuilder<List<dynamic>>(
+                      future: Future.wait([
+                        vaultProvider.getCurrentNotes(),
+                        vaultProvider.getCurrentFolders(),
+                      ]),
+                      builder: (context, currentSnapshot) {
+                        final currentNotes = currentSnapshot.hasData
+                            ? (currentSnapshot.data![0] as List).length
+                            : 0;
+                        final currentFolders = currentSnapshot.hasData
+                            ? (currentSnapshot.data![1] as List).length
+                            : 0;
+                        
+                        return Column(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              '$totalNotes total notes',
+                              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                color: Theme.of(context).colorScheme.onPrimaryContainer,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              '$currentNotes notes here',
+                              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                color: Theme.of(context).colorScheme.onPrimaryContainer,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              '$totalFolders total folders',
+                              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                color: Theme.of(context).colorScheme.onPrimaryContainer,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              '$currentFolders folders here',
+                              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                color: Theme.of(context).colorScheme.onPrimaryContainer,
+                              ),
+                            ),
+                          ],
+                        );
+                      },
                     ),
                   ),
-          ),
+                ),
+
+            ),
+          ],
         );
       },
     );
