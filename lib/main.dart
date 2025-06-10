@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'providers/vault_provider.dart';
-import 'screens/home_screen.dart';
+import 'screens/directory_screen.dart';
 import 'screens/vault_setup_screen.dart';
 import 'services/settings_service.dart';
 
@@ -151,7 +151,7 @@ class _AppRouterState extends State<AppRouter> {
       return VaultSetupScreen(onSetupComplete: _onSetupComplete);
     }
 
-    return const HomeScreen();
+    return const DirectoryScreen();
   }
 }
 

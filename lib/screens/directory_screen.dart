@@ -5,22 +5,23 @@ import '../models/note.dart';
 import 'note_editor_screen.dart';
 import 'settings_screen.dart';
 
-/// HomeScreen serves as the main interface for the notes app
-/// 
+/// DirectoryScreen serves as the main interface for the notes app
+///
 /// Features:
 /// - File explorer-like interface showing current directory contents
 /// - Real-time file system reading with no internal data storage
 /// - Breadcrumb navigation for folder traversal
 /// - Search functionality across the vault
 /// - Floating action buttons for creating notes and folders
-class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
+/// - Proper back navigation handling to parent directories
+class DirectoryScreen extends StatefulWidget {
+  const DirectoryScreen({super.key});
 
   @override
-  State<HomeScreen> createState() => _HomeScreenState();
+  State<DirectoryScreen> createState() => _DirectoryScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
+class _DirectoryScreenState extends State<DirectoryScreen> {
   final TextEditingController _searchController = TextEditingController();
   bool _isSearching = false;
   List<Note> _searchResults = [];
@@ -47,34 +48,46 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: SafeArea(
-        child: Consumer<VaultProvider>(
-          builder: (context, vaultProvider, child) {
-            if (!vaultProvider.isInitialized && vaultProvider.isLoading) {
-              return _buildInitializingScreen();
+    return Consumer<VaultProvider>(
+      builder: (context, vaultProvider, child) {
+        return PopScope(
+          canPop: vaultProvider.isInRoot,
+          onPopInvokedWithResult: (didPop, result) async {
+            if (!didPop && !vaultProvider.isInRoot) {
+              await vaultProvider.navigateToParent();
             }
-
-            if (vaultProvider.error != null) {
-              return _buildErrorScreen(vaultProvider);
-            }
-
-            if (!vaultProvider.isInitialized) {
-              return _buildWelcomeScreen(vaultProvider);
-            }
-
-            return _buildMainScreen(vaultProvider);
           },
-        ),
-      ),
-      floatingActionButton: Consumer<VaultProvider>(
-        builder: (context, vaultProvider, child) {
-          if (!vaultProvider.isInitialized || _isSearching) {
-            return const SizedBox.shrink();
-          }
-          return _buildFloatingActionButtons(vaultProvider);
-        },
-      ),
+          child: Scaffold(
+            body: SafeArea(
+              child: Builder(
+                builder: (context) {
+                  if (!vaultProvider.isInitialized && vaultProvider.isLoading) {
+                    return _buildInitializingScreen();
+                  }
+
+                  if (vaultProvider.error != null) {
+                    return _buildErrorScreen(vaultProvider);
+                  }
+
+                  if (!vaultProvider.isInitialized) {
+                    return _buildWelcomeScreen(vaultProvider);
+                  }
+
+                  return _buildMainScreen(vaultProvider);
+                },
+              ),
+            ),
+            floatingActionButton: Builder(
+              builder: (context) {
+                if (!vaultProvider.isInitialized || _isSearching) {
+                  return const SizedBox.shrink();
+                }
+                return _buildFloatingActionButtons(vaultProvider);
+              },
+            ),
+          ),
+        );
+      },
     );
   }
 
