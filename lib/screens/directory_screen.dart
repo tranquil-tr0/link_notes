@@ -30,11 +30,11 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
   bool _wasInitialized = false;
   bool _isStatsExpanded = false;
   bool _isSearchFieldExpanded = false;
-  
+
   @override
   void initState() {
     super.initState();
-    
+
     // Initialize the vault when the screen loads
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final vaultProvider = context.read<VaultProvider>();
@@ -73,10 +73,10 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
             }
           });
         }
-        
+
         // Update our tracking of initialization state
         _wasInitialized = vaultProvider.isInitialized;
-        
+
         return PopScope(
           canPop: vaultProvider.isInRoot,
           onPopInvokedWithResult: (didPop, result) async {
@@ -126,10 +126,7 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
         children: [
           CircularProgressIndicator(),
           SizedBox(height: 16),
-          Text(
-            'Initializing Vault...',
-            style: TextStyle(fontSize: 18),
-          ),
+          Text('Initializing Vault...', style: TextStyle(fontSize: 18)),
         ],
       ),
     );
@@ -138,7 +135,7 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
   Widget _buildErrorScreen(VaultProvider vaultProvider) {
     final error = vaultProvider.error!;
     final isPermissionError = error.toLowerCase().contains('permission');
-    
+
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(24.0),
@@ -198,11 +195,7 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(
-              Icons.folder_outlined,
-              size: 80,
-              color: Colors.blue,
-            ),
+            const Icon(Icons.folder_outlined, size: 80, color: Colors.blue),
             const SizedBox(height: 24),
             Text(
               'Welcome to Link Notes',
@@ -232,15 +225,14 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
     return Column(
       children: [
         _buildAppBar(vaultProvider),
-        if (_isSearching) _buildSearchResultsOverlay()
-        else Expanded(child: _buildMainContent(vaultProvider)),
+        Expanded(child: _buildMainContent(vaultProvider)),
       ],
     );
   }
 
   Widget _buildAppBar(VaultProvider vaultProvider) {
     return Container(
-      padding: const EdgeInsets.all(16.0),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 5),
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.surface,
         boxShadow: [
@@ -251,70 +243,19 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
           ),
         ],
       ),
-      child: Column(
+      child: Row(
         children: [
-          // Top row: Vault name and actions
-          Row(
-            children: [
-              const Icon(Icons.folder, size: 24),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'My Vault',
-                      style: Theme.of(context).textTheme.headlineSmall,
-                    ),
-                    if (vaultProvider.vaultDisplayName != 'No Vault')
-                      Text(
-                        vaultProvider.vaultDisplayName,
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
-                        ),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                  ],
-                ),
-              ),
-              const Spacer(),
-              _buildVaultStats(vaultProvider),
-              const SizedBox(width: 16),
-              IconButton(
-                onPressed: () {
-                  vaultProvider.refresh();
-                },
-                icon: const Icon(Icons.refresh),
-                tooltip: 'Refresh',
-              ),
-              IconButton(
-                onPressed: () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (context) => const SettingsScreen(),
-                    ),
-                  );
-                },
-                icon: const Icon(Icons.settings),
-                tooltip: 'Settings',
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          // Search bar and breadcrumbs
-          Row(
-            children: [
-              Expanded(
-                flex: 2,
-                child: _buildSearchField(vaultProvider),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                flex: 3,
-                child: _buildBreadcrumbs(vaultProvider),
-              ),
-            ],
-          ),
+          // 1. Breadcrumbs (left)
+          Expanded(flex: 3, child: _buildBreadcrumbs(vaultProvider)),
+
+          // 2. Search (center-left)
+          _buildSearchButton(vaultProvider),
+
+          // 3. Vault Stats (center-right)
+          _buildVaultStats(vaultProvider),
+
+          // 4. Settings (right)
+          _buildSettingsButton(),
         ],
       ),
     );
@@ -326,7 +267,7 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
       builder: (context, snapshot) {
         final totalNotes = snapshot.data?['totalNotes'] ?? 0;
         final totalFolders = snapshot.data?['totalFolders'] ?? 0;
-        
+
         return Stack(
           clipBehavior: Clip.none,
           children: [
@@ -338,7 +279,10 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
                 });
               },
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 6,
+                ),
                 decoration: BoxDecoration(
                   color: Theme.of(context).colorScheme.primaryContainer,
                   borderRadius: BorderRadius.circular(16),
@@ -357,15 +301,18 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
                 top: 0,
                 left: -7,
 
-                  child: GestureDetector(
-                    onTap: () {
-                      setState(() {
-                        _isStatsExpanded = false;
-                      });
-                    },
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 200),
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                child: GestureDetector(
+                  onTap: () {
+                    setState(() {
+                      _isStatsExpanded = false;
+                    });
+                  },
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 6,
+                    ),
                     decoration: BoxDecoration(
                       color: Theme.of(context).colorScheme.primaryContainer,
                       borderRadius: BorderRadius.circular(16),
@@ -389,37 +336,49 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
                         final currentFolders = currentSnapshot.hasData
                             ? (currentSnapshot.data![1] as List).length
                             : 0;
-                        
+
                         return Column(
                           mainAxisSize: MainAxisSize.min,
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
                               '$totalNotes total notes',
-                              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                color: Theme.of(context).colorScheme.onPrimaryContainer,
-                              ),
+                              style: Theme.of(context).textTheme.bodySmall
+                                  ?.copyWith(
+                                    color: Theme.of(
+                                      context,
+                                    ).colorScheme.onPrimaryContainer,
+                                  ),
                             ),
                             const SizedBox(height: 2),
                             Text(
                               '$currentNotes notes here',
-                              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                color: Theme.of(context).colorScheme.onPrimaryContainer,
-                              ),
+                              style: Theme.of(context).textTheme.bodySmall
+                                  ?.copyWith(
+                                    color: Theme.of(
+                                      context,
+                                    ).colorScheme.onPrimaryContainer,
+                                  ),
                             ),
                             const SizedBox(height: 2),
                             Text(
                               '$totalFolders total folders',
-                              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                color: Theme.of(context).colorScheme.onPrimaryContainer,
-                              ),
+                              style: Theme.of(context).textTheme.bodySmall
+                                  ?.copyWith(
+                                    color: Theme.of(
+                                      context,
+                                    ).colorScheme.onPrimaryContainer,
+                                  ),
                             ),
                             const SizedBox(height: 2),
                             Text(
                               '$currentFolders folders here',
-                              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                color: Theme.of(context).colorScheme.onPrimaryContainer,
-                              ),
+                              style: Theme.of(context).textTheme.bodySmall
+                                  ?.copyWith(
+                                    color: Theme.of(
+                                      context,
+                                    ).colorScheme.onPrimaryContainer,
+                                  ),
                             ),
                           ],
                         );
@@ -427,85 +386,34 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
                     ),
                   ),
                 ),
-
-            ),
+              ),
           ],
         );
       },
     );
   }
 
-  Widget _buildSearchField(VaultProvider vaultProvider) {
-    return Align(
-      alignment: Alignment.centerLeft,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 300),
-        curve: Curves.easeInOut,
-        width: _isSearchFieldExpanded ? 300 : 48, // Fixed width for animation
-        height: _isSearchFieldExpanded ? 48 : 24,
-        child: _isSearchFieldExpanded
-            ? TextField(
-                controller: _searchController,
-                autofocus: true,
-                decoration: InputDecoration(
-                  hintText: 'Search notes...',
-                  prefixIcon: const Icon(Icons.search),
-                  suffixIcon: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      if (_isSearching)
-                        IconButton(
-                          onPressed: () {
-                            _searchController.clear();
-                            setState(() {
-                              _isSearching = false;
-                              _searchResults = [];
-                            });
-                          },
-                          icon: const Icon(Icons.clear),
-                        ),
-                      IconButton(
-                        onPressed: () {
-                          _searchController.clear();
-                          setState(() {
-                            _isSearchFieldExpanded = false;
-                            _isSearching = false;
-                            _searchResults = [];
-                          });
-                        },
-                        icon: const Icon(Icons.close),
-                      ),
-                    ],
-                  ),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                ),
-                onChanged: (query) {
-                  if (query.isNotEmpty) {
-                    _performSearch(vaultProvider, query);
-                  } else {
-                    setState(() {
-                      _isSearching = false;
-                      _searchResults = [];
-                    });
-                  }
-                },
-              )
-            : Align(
-                alignment: Alignment.center,
-                child: IconButton(
-                  onPressed: () {
-                    setState(() {
-                      _isSearchFieldExpanded = true;
-                    });
-                  },
-                  icon: const Icon(Icons.search),
-                  tooltip: 'Search notes',
-                ),
-              ),
-      ),
+  Widget _buildSettingsButton() {
+    return IconButton(
+      onPressed: () {
+        Navigator.of(
+          context,
+        ).push(MaterialPageRoute(builder: (context) => const SettingsScreen()));
+      },
+      icon: const Icon(Icons.settings),
+      tooltip: 'Settings',
+    );
+  }
+
+  Widget _buildSearchButton(VaultProvider vaultProvider) {
+    return IconButton(
+      onPressed: () {
+        setState(() {
+          _isSearchFieldExpanded = true;
+        });
+      },
+      icon: const Icon(Icons.search),
+      tooltip: 'Search notes',
     );
   }
 
@@ -514,7 +422,7 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
       _isSearching = true;
       _isSearchLoading = true;
     });
-    
+
     try {
       final results = await vaultProvider.searchNotes(query);
       setState(() {
@@ -535,7 +443,7 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
       vaultProvider.vaultPath,
       vaultProvider.currentPath,
     );
-    
+
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       child: Row(
@@ -567,11 +475,15 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Icon(
-                      i == 0 ? Icons.home : (i == 1 ? Icons.folder_special : Icons.folder),
+                      i == 0
+                          ? Icons.home
+                          : (i == 1 ? Icons.folder_special : Icons.folder),
                       size: 16,
                       color: i == segments.length - 1
                           ? Theme.of(context).colorScheme.primary
-                          : Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                          : Theme.of(
+                              context,
+                            ).colorScheme.onSurface.withOpacity(0.7),
                     ),
                     const SizedBox(width: 4),
                     ConstrainedBox(
@@ -581,7 +493,9 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
                         style: TextStyle(
                           color: i == segments.length - 1
                               ? Theme.of(context).colorScheme.primary
-                              : Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                              : Theme.of(
+                                  context,
+                                ).colorScheme.onSurface.withOpacity(0.7),
                           fontWeight: i == segments.length - 1
                               ? FontWeight.w600
                               : FontWeight.normal,
@@ -605,68 +519,6 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
     );
   }
 
-  Widget _buildSearchResultsOverlay() {
-    return Expanded(
-      child: Container(
-        margin: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.surface,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: Theme.of(context).colorScheme.outline.withOpacity(0.2),
-          ),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Padding(
-              padding: const EdgeInsets.all(16),
-              child: Row(
-                children: [
-                  const Icon(Icons.search, size: 20),
-                  const SizedBox(width: 8),
-                  Text(
-                    'Search Results for "${_searchController.text}"',
-                    style: Theme.of(context).textTheme.titleMedium,
-                  ),
-                  const Spacer(),
-                  Text(
-                    '${_searchResults.length} results',
-                    style: Theme.of(context).textTheme.bodySmall,
-                  ),
-                ],
-              ),
-            ),
-            const Divider(height: 1),
-            Expanded(
-              child: _isSearchLoading
-                  ? const Center(child: CircularProgressIndicator())
-                  : _searchResults.isEmpty
-                      ? const Center(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(Icons.search_off, size: 48, color: Colors.grey),
-                              SizedBox(height: 16),
-                              Text('No notes found'),
-                            ],
-                          ),
-                        )
-                      : ListView.builder(
-                          padding: const EdgeInsets.all(16),
-                          itemCount: _searchResults.length,
-                          itemBuilder: (context, index) {
-                            final note = _searchResults[index];
-                            return _buildNoteListItem(note);
-                          },
-                        ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
   Widget _buildMainContent(VaultProvider vaultProvider) {
     return FutureBuilder<List<Note>>(
       future: vaultProvider.getCurrentNotes(),
@@ -674,7 +526,7 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
         if (notesSnapshot.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator());
         }
-        
+
         if (notesSnapshot.hasError) {
           return Center(
             child: Column(
@@ -692,14 +544,14 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
             ),
           );
         }
-        
+
         return FutureBuilder<List<String>>(
           future: vaultProvider.getCurrentFolders(),
           builder: (context, foldersSnapshot) {
             if (foldersSnapshot.connectionState == ConnectionState.waiting) {
               return const Center(child: CircularProgressIndicator());
             }
-            
+
             if (foldersSnapshot.hasError) {
               return Center(
                 child: Column(
@@ -717,10 +569,10 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
                 ),
               );
             }
-            
+
             final notes = notesSnapshot.data ?? [];
             final folders = foldersSnapshot.data ?? [];
-            
+
             return _buildDirectoryContents(vaultProvider, notes, folders);
           },
         );
@@ -728,9 +580,13 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
     );
   }
 
-  Widget _buildDirectoryContents(VaultProvider vaultProvider, List<Note> notes, List<String> folders) {
+  Widget _buildDirectoryContents(
+    VaultProvider vaultProvider,
+    List<Note> notes,
+    List<String> folders,
+  ) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.symmetric(horizontal: 8),
       child: notes.isEmpty && folders.isEmpty
           ? _buildEmptyDirectoryState(vaultProvider)
           : _buildDirectoryGrid(vaultProvider, notes, folders),
@@ -775,16 +631,20 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
     );
   }
 
-  Widget _buildDirectoryGrid(VaultProvider vaultProvider, List<Note> notes, List<String> folders) {
+  Widget _buildDirectoryGrid(
+    VaultProvider vaultProvider,
+    List<Note> notes,
+    List<String> folders,
+  ) {
     return LayoutBuilder(
       builder: (context, constraints) {
         final screenWidth = constraints.maxWidth;
         final cardWidth = 280.0;
         final crossAxisCount = (screenWidth / cardWidth).floor().clamp(1, 4);
-        
+
         // Combine folders and notes for display
         final allItems = <dynamic>[...folders, ...notes];
-        
+
         return GridView.builder(
           gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
             crossAxisCount: crossAxisCount,
@@ -795,7 +655,7 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
           itemCount: allItems.length,
           itemBuilder: (context, index) {
             final item = allItems[index];
-            
+
             if (item is String) {
               // It's a folder
               return _buildFolderCard(vaultProvider, item);
@@ -803,7 +663,7 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
               // It's a note
               return _buildNoteCard(item);
             }
-            
+
             return const SizedBox.shrink();
           },
         );
@@ -869,7 +729,9 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
                     Text(
                       'Folder',
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                        color: Theme.of(
+                          context,
+                        ).colorScheme.onSurface.withOpacity(0.6),
                       ),
                     ),
                   ],
@@ -961,7 +823,9 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
                       child: Text(
                         note.content,
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                          color: Theme.of(
+                            context,
+                          ).colorScheme.onSurface.withOpacity(0.7),
                         ),
                         maxLines: 3,
                         overflow: TextOverflow.ellipsis,
@@ -971,7 +835,9 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
                     Text(
                       'Modified ${_formatDate(note.modifiedAt)}',
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5),
+                        color: Theme.of(
+                          context,
+                        ).colorScheme.onSurface.withOpacity(0.5),
                       ),
                     ),
                   ],
@@ -989,11 +855,7 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
       margin: const EdgeInsets.only(bottom: 8),
       child: ListTile(
         leading: const Icon(Icons.note),
-        title: Text(
-          note.title,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-        ),
+        title: Text(note.title, maxLines: 1, overflow: TextOverflow.ellipsis),
         subtitle: Text(
           note.content,
           maxLines: 2,
@@ -1144,7 +1006,9 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Delete Folder'),
-        content: Text('Are you sure you want to delete "$folderName" and all its contents?'),
+        content: Text(
+          'Are you sure you want to delete "$folderName" and all its contents?',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
@@ -1166,7 +1030,7 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
   String _formatDate(DateTime date) {
     final now = DateTime.now();
     final difference = now.difference(date);
-    
+
     if (difference.inDays == 0) {
       if (difference.inHours == 0) {
         return '${difference.inMinutes}m ago';
