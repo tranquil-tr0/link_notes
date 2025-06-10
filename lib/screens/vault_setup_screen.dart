@@ -98,39 +98,6 @@ class _VaultSetupScreenState extends State<VaultSetupScreen> {
 
     try {
       // Request storage permissions first
-      final permissionService = PermissionService.instance;
-      bool hasPermission = await permissionService.hasStoragePermission();
-      
-      if (!hasPermission) {
-        // Show rationale if needed
-        if (await permissionService.shouldShowPermissionRationale()) {
-          setState(() {
-            _error = permissionService.getPermissionRequirementsMessage();
-          });
-          
-          // Wait a moment for user to read the message
-          await Future.delayed(const Duration(seconds: 2));
-        }
-        
-        // Request permissions
-        hasPermission = await permissionService.requestStoragePermission();
-        
-        if (!hasPermission) {
-          // Check if permanently denied
-          final isPermanentlyDenied = await permissionService.isPermissionPermanentlyDenied();
-          if (isPermanentlyDenied) {
-            setState(() {
-              _error = 'Storage permissions are permanently denied. Please enable them in Settings > Apps > Link Notes > Permissions';
-            });
-            return;
-          } else {
-            setState(() {
-              _error = 'Storage permissions are required to access your notes. Please grant permission and try again.';
-            });
-            return;
-          }
-        }
-      }
 
       // Test if directory can be created/accessed
       final directory = Directory(_selectedDirectory!);

@@ -10,22 +10,6 @@ class PermissionService {
 
   static PermissionService get instance => _instance;
 
-  /// Check if storage permissions are granted
-  Future<bool> hasStoragePermission() async {
-    if (kIsWeb) return true; // Web doesn't need storage permissions
-
-    if (Platform.isAndroid) {
-      return await Permission.photos.isGranted &&
-          await Permission.videos.isGranted &&
-          await Permission.audio.isGranted;
-    } else if (Platform.isIOS) {
-      // iOS doesn't require explicit storage permissions for app documents
-      return true;
-    }
-
-    return false;
-  }
-
   /// Request storage permissions
   Future<bool> requestStoragePermission() async {
     if (kIsWeb) return true; // Web doesn't need storage permissions

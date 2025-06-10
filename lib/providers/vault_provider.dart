@@ -62,25 +62,7 @@ class VaultProvider extends ChangeNotifier {
     _clearError();
     
     try {
-      // Check storage permissions first
-      final permissionService = PermissionService.instance;
-      bool hasPermission = await permissionService.hasStoragePermission();
-      
-      if (!hasPermission) {
-        // Request permissions
-        hasPermission = await permissionService.requestStoragePermission();
-        
-        if (!hasPermission) {
-          // Check if permanently denied
-          final isPermanentlyDenied = await permissionService.isPermissionPermanentlyDenied();
-          if (isPermanentlyDenied) {
-            throw Exception('Storage permissions are permanently denied. Please enable them in Settings > Apps > Link Notes > Permissions');
-          } else {
-            throw Exception('Storage permissions are required to access your notes');
-          }
-        }
-      }
-      
+      // Check storage permissions first      
       // Get vault directory from settings
       await SettingsService.instance.initialize();
       _vaultDirectory = SettingsService.instance.getVaultDirectory();
@@ -110,23 +92,6 @@ class VaultProvider extends ChangeNotifier {
     _clearError();
     
     try {
-      final permissionService = PermissionService.instance;
-      bool hasPermission = await permissionService.hasStoragePermission();
-      
-      if (!hasPermission) {
-        // Try to request permissions again
-        hasPermission = await permissionService.requestStoragePermission();
-        
-        if (!hasPermission) {
-          // Check if permanently denied
-          final isPermanentlyDenied = await permissionService.isPermissionPermanentlyDenied();
-          if (isPermanentlyDenied) {
-            throw Exception('Storage permissions are permanently denied. Please enable them in Settings > Apps > Link Notes > Permissions');
-          } else {
-            throw Exception('Storage permissions are required to access your notes');
-          }
-        }
-      }
       
       // If we got permissions, clear any existing errors and notify listeners
       _clearError();
@@ -229,14 +194,6 @@ class VaultProvider extends ChangeNotifier {
     
     try {
       // Check permissions before attempting to read files
-      final permissionService = PermissionService.instance;
-      final hasPermission = await permissionService.hasStoragePermission();
-      
-      if (!hasPermission) {
-        debugPrint('Storage permission denied - cannot read notes');
-        _setError('Storage permission required to read notes. Please grant permission in app settings.');
-        return [];
-      }
       
       final directory = Directory(currentFullPath);
       if (!await directory.exists()) return [];
@@ -270,15 +227,6 @@ class VaultProvider extends ChangeNotifier {
     if (!_initialized || _vaultDirectory == null) return [];
     
     try {
-      // Check permissions before attempting to read directories
-      final permissionService = PermissionService.instance;
-      final hasPermission = await permissionService.hasStoragePermission();
-      
-      if (!hasPermission) {
-        debugPrint('Storage permission denied - cannot read folders');
-        _setError('Storage permission required to read folders. Please grant permission in app settings.');
-        return [];
-      }
       
       final directory = Directory(currentFullPath);
       if (!await directory.exists()) return [];
