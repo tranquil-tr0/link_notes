@@ -1,6 +1,4 @@
-- [ ] vault_setup_screen ln 32: see if it is possible to make this work for iOS, since I think this path will break iOS
-- [ ] ~~make the status bar (that shows folder name, count, and note count below the location and search) hidable (requires editing settings and directory_screen I think)~~
-- [ ] assess whether to have have photo, image, video permissions in my AndroidManifest.xml
+- [ ] add photo, image, video notes (as upload) (follow obsidian markdown embed syntax)
 - [ ] get rid of all app state (to do with notes)
 - [ ] dynamic markdown editor - implement proper editor
 - [ ] implement search
