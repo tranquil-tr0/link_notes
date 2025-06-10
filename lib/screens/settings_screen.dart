@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:provider/provider.dart';
 import '../services/settings_service.dart';
+import '../services/permission_service.dart';
 import '../providers/vault_provider.dart';
 import 'dart:io';
 
@@ -15,7 +16,6 @@ class SettingsScreen extends StatefulWidget {
 class _SettingsScreenState extends State<SettingsScreen> {
   final SettingsService _settingsService = SettingsService.instance;
   String? _currentVaultDirectory;
-  String? _newVaultDirectory;
   bool _isLoading = false;
   String? _error;
 
@@ -28,30 +28,58 @@ class _SettingsScreenState extends State<SettingsScreen> {
   void _loadCurrentSettings() {
     setState(() {
       _currentVaultDirectory = _settingsService.getVaultDirectory();
-      _newVaultDirectory = _currentVaultDirectory;
     });
   }
 
-  Future<void> _pickNewDirectory() async {
+  Future<void> _changeVaultLocation() async {
     try {
       setState(() {
         _isLoading = true;
         _error = null;
       });
 
-      final result = await FilePicker.platform.getDirectoryPath(
-        dialogTitle: 'Select New Vault Directory',
-        lockParentWindow: true,
-      );
+      String? newDirectoryPath;
 
-      if (result != null) {
-        setState(() {
-          _newVaultDirectory = result;
-        });
+      if (Platform.isAndroid) {
+        // Use SAF for Android - immediately apply the new directory
+        final granted = await PermissionService.instance.requestStoragePermission();
+        if (granted) {
+          final safUri = await PermissionService.instance.getVaultSafUri();
+          if (safUri != null) {
+            newDirectoryPath = safUri;
+          } else {
+            setState(() {
+              _error = 'Failed to get storage access URI. Please try again.';
+            });
+            return;
+          }
+        } else {
+          setState(() {
+            _error = 'Storage access permission is required to change vault directory';
+          });
+          return;
+        }
+      } else {
+        // Use traditional file picker for other platforms
+        final result = await FilePicker.platform.getDirectoryPath(
+          dialogTitle: 'Select New Vault Directory',
+          lockParentWindow: true,
+        );
+
+        if (result != null) {
+          newDirectoryPath = result;
+        } else {
+          return; // User cancelled
+        }
+      }
+
+      // Apply the directory change immediately
+      if (newDirectoryPath != null) {
+        await _applyDirectoryChange(newDirectoryPath);
       }
     } catch (e) {
       setState(() {
-        _error = 'Failed to select directory: $e';
+        _error = 'Failed to change vault directory: $e';
       });
     } finally {
       setState(() {
@@ -60,41 +88,34 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
-  Future<void> _changeVaultDirectory() async {
-    if (_newVaultDirectory == null || _newVaultDirectory == _currentVaultDirectory) {
-      return;
-    }
-
-    final confirmed = await _showConfirmationDialog();
-    if (!confirmed) return;
-
-    setState(() {
-      _isLoading = true;
-      _error = null;
-    });
-
+  Future<void> _applyDirectoryChange(String newDirectoryPath) async {
     try {
       final vaultProvider = context.read<VaultProvider>();
       
-      // Test if new directory can be created/accessed
-      final newDirectory = Directory(_newVaultDirectory!);
-      if (!await newDirectory.exists()) {
-        await newDirectory.create(recursive: true);
+      if (Platform.isAndroid) {
+        // For Android with SAF, just save the URI
+        await _settingsService.setVaultDirectory(newDirectoryPath);
+      } else {
+        // For other platforms, test directory access
+        final newDirectory = Directory(newDirectoryPath);
+        if (!await newDirectory.exists()) {
+          await newDirectory.create(recursive: true);
+        }
+
+        // Test write permissions
+        final testFile = File('$newDirectoryPath/.test_write');
+        await testFile.writeAsString('test');
+        await testFile.delete();
+
+        // Update settings
+        await _settingsService.setVaultDirectory(newDirectoryPath);
       }
 
-      // Test write permissions
-      final testFile = File('${_newVaultDirectory!}/.test_write');
-      await testFile.writeAsString('test');
-      await testFile.delete();
-
-      // Update settings
-      await _settingsService.setVaultDirectory(_newVaultDirectory!);
-
       // Reinitialize the vault with new location
-      await vaultProvider.changeVaultDirectory(_newVaultDirectory!);
+      await vaultProvider.changeVaultDirectory(newDirectoryPath);
 
       setState(() {
-        _currentVaultDirectory = _newVaultDirectory;
+        _currentVaultDirectory = newDirectoryPath;
       });
 
       if (mounted) {
@@ -109,47 +130,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
       setState(() {
         _error = 'Failed to change vault directory: $e';
       });
-    } finally {
-      setState(() {
-        _isLoading = false;
-      });
     }
   }
 
-  Future<bool> _showConfirmationDialog() async {
-    return await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Change Vault Directory'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text('This will change where the app looks for notes.'),
-            const SizedBox(height: 16),
-            Text('From: $_currentVaultDirectory'),
-            const SizedBox(height: 8),
-            Text('To: $_newVaultDirectory'),
-            const SizedBox(height: 16),
-            const Text(
-              'This operation cannot be undone. Make sure you have a backup of your notes.',
-              style: TextStyle(fontWeight: FontWeight.bold),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Change Directory'),
-          ),
-        ],
-      ),
-    ) ?? false;
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -218,61 +201,24 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
               ),
             ),
-            const SizedBox(height: 16),
-            Text(
-              'New Location:',
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            const SizedBox(height: 4),
-            Container(
+            const SizedBox(height: 24),
+            SizedBox(
               width: double.infinity,
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.surface,
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(
-                  color: Theme.of(context).colorScheme.outline.withOpacity(0.3),
-                ),
+              child: ElevatedButton.icon(
+                onPressed: _isLoading ? null : _changeVaultLocation,
+                icon: _isLoading
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.folder_open),
+                label: Text(_isLoading ? 'Changing location...' : 'Change Vault Location'),
               ),
-              child: Text(
-                _newVaultDirectory ?? 'No directory selected',
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  fontFamily: 'monospace',
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: _isLoading ? null : _pickNewDirectory,
-                    icon: const Icon(Icons.folder_open),
-                    label: const Text('Browse...'),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                ElevatedButton.icon(
-                  onPressed: (_isLoading || _newVaultDirectory == _currentVaultDirectory)
-                      ? null
-                      : _changeVaultDirectory,
-                  icon: _isLoading
-                      ? const SizedBox(
-                          width: 16,
-                          height: 16,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Icon(Icons.check),
-                  label: const Text('Apply'),
-                ),
-              ],
             ),
             const SizedBox(height: 8),
             Text(
-              'Your notes will be those in the selected directory. '
-              'Your current notes will not be affected or moved.',
+              'Select a new location for your vault. Your current notes will not be affected or moved.',
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
                 color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
               ),

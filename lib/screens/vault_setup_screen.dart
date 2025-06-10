@@ -16,36 +16,11 @@ class VaultSetupScreen extends StatefulWidget {
 
 class _VaultSetupScreenState extends State<VaultSetupScreen> {
   final SettingsService _settingsService = SettingsService.instance;
-  String? _selectedDirectory;
   bool _isLoading = false;
   String? _error;
 
-  @override
-  void initState() {
-    super.initState();
-    _setDefaultDirectory();
-  }
-
-  /// Set the default directory using path_provider for cross-platform support
-  Future<void> _setDefaultDirectory() async {
-    try {
-      String defaultPath;
-
-      final directory = await getApplicationDocumentsDirectory();
-      defaultPath = '${directory.path}/Link Notes';
-      
-      setState(() {
-        _selectedDirectory = defaultPath;
-      });
-    } catch (e) {
-      setState(() {
-        _error = 'Failed to get default directory: $e';
-      });
-    }
-  }
-
-  /// Open directory picker to select custom vault location
-  Future<void> _pickDirectory() async {
+  /// Select vault location and complete setup immediately
+  Future<void> _selectVaultLocation() async {
     try {
       setState(() {
         _isLoading = true;
@@ -53,19 +28,31 @@ class _VaultSetupScreenState extends State<VaultSetupScreen> {
       });
 
       if (Platform.isAndroid) {
-        // Use SAF for Android
+        // Use SAF for Android - immediately prompt and save
         final granted = await PermissionService.instance.requestStoragePermission();
         if (granted) {
           final safUri = await PermissionService.instance.getVaultSafUri();
           if (safUri != null) {
+            // Immediately save the SAF URI as the vault directory
+            await _settingsService.setVaultDirectory(safUri);
+            await _settingsService.setFirstLaunchCompleted();
+
+            // Complete setup immediately after SAF selection
+            if (widget.onSetupComplete != null) {
+              widget.onSetupComplete!();
+            }
+            return;
+          } else {
             setState(() {
-              _selectedDirectory = 'SAF Directory: $safUri';
+              _error = 'Failed to get storage access URI. Please try again.';
             });
+            return;
           }
         } else {
           setState(() {
             _error = 'Storage access permission is required to select a vault directory';
           });
+          return;
         }
       } else {
         // Use traditional file picker for other platforms
@@ -82,9 +69,8 @@ class _VaultSetupScreenState extends State<VaultSetupScreen> {
         );
 
         if (result != null) {
-          setState(() {
-            _selectedDirectory = result;
-          });
+          // Validate and save the selected directory immediately
+          await _saveDirectoryAndComplete(result);
         }
       }
     } catch (e) {
@@ -98,70 +84,31 @@ class _VaultSetupScreenState extends State<VaultSetupScreen> {
     }
   }
 
-  /// Validate and save the selected directory
-  Future<void> _saveVaultDirectory() async {
-    if (_selectedDirectory == null || _selectedDirectory!.isEmpty) {
-      setState(() {
-        _error = 'Please select a vault directory';
-      });
-      return;
-    }
-
-    setState(() {
-      _isLoading = true;
-      _error = null;
-    });
-
+  /// Validate and save the selected directory for non-Android platforms
+  Future<void> _saveDirectoryAndComplete(String directoryPath) async {
     try {
-      if (Platform.isAndroid) {
-        // For Android with SAF, ensure we have permissions
-        final hasPermission = await PermissionService.instance.hasStoragePermission();
-        if (!hasPermission) {
-          setState(() {
-            _error = 'Storage access permission is required. Please select a directory first.';
-          });
-          return;
-        }
-
-        // Get the SAF URI and save it
-        final safUri = await PermissionService.instance.getVaultSafUri();
-        if (safUri != null) {
-          await _settingsService.setVaultDirectory(safUri);
-        } else {
-          setState(() {
-            _error = 'Failed to get storage access URI. Please try selecting the directory again.';
-          });
-          return;
-        }
-      } else {
-        // For other platforms, use traditional file system
-        final directory = Directory(_selectedDirectory!);
-        if (!await directory.exists()) {
-          await directory.create(recursive: true);
-        }
-
-        // Test write permissions by creating a temporary file
-        final testFile = File('${_selectedDirectory!}/.test_write');
-        await testFile.writeAsString('test');
-        await testFile.delete();
-
-        // Save the directory to settings
-        await _settingsService.setVaultDirectory(_selectedDirectory!);
+      // For non-Android platforms, use traditional file system
+      final directory = Directory(directoryPath);
+      if (!await directory.exists()) {
+        await directory.create(recursive: true);
       }
 
+      // Test write permissions by creating a temporary file
+      final testFile = File('$directoryPath/.test_write');
+      await testFile.writeAsString('test');
+      await testFile.delete();
+
+      // Save the directory to settings
+      await _settingsService.setVaultDirectory(directoryPath);
       await _settingsService.setFirstLaunchCompleted();
 
-      // Notify completion
+      // Complete setup immediately
       if (widget.onSetupComplete != null) {
         widget.onSetupComplete!();
       }
     } catch (e) {
       setState(() {
         _error = 'Failed to set up vault directory: $e';
-      });
-    } finally {
-      setState(() {
-        _isLoading = false;
       });
     }
   }
@@ -202,7 +149,6 @@ class _VaultSetupScreenState extends State<VaultSetupScreen> {
                   ],
                 ),
               ),
-              _buildActionButtons(),
             ],
           ),
         ),
@@ -212,7 +158,7 @@ class _VaultSetupScreenState extends State<VaultSetupScreen> {
 
   Widget _buildDirectorySelector() {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
         border: Border.all(
           color: Theme.of(context).colorScheme.outline.withOpacity(0.3),
@@ -220,60 +166,39 @@ class _VaultSetupScreenState extends State<VaultSetupScreen> {
         borderRadius: BorderRadius.circular(12),
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              const Icon(Icons.folder, size: 20),
-              const SizedBox(width: 8),
-              Text(
-                'Vault Directory',
-                style: Theme.of(context).textTheme.titleMedium,
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.surface,
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(
-                color: Theme.of(context).colorScheme.outline.withOpacity(0.2),
-              ),
-            ),
-            child: Text(
-              _selectedDirectory ?? 'No directory selected',
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                fontFamily: 'monospace',
-              ),
-            ),
+          const Icon(
+            Icons.folder_special,
+            size: 48,
+            color: Colors.blue,
           ),
           const SizedBox(height: 16),
-          Row(
-            children: [
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: _isLoading ? null : _pickDirectory,
-                  icon: const Icon(Icons.folder_open),
-                  label: const Text('Browse...'),
-                ),
-              ),
-              const SizedBox(width: 12),
-              ElevatedButton.icon(
-                onPressed: _isLoading ? null : _setDefaultDirectory,
-                icon: const Icon(Icons.restore),
-                label: const Text('Default'),
-              ),
-            ],
+          Text(
+            'Select Your Vault Location',
+            style: Theme.of(context).textTheme.titleLarge,
+            textAlign: TextAlign.center,
           ),
           const SizedBox(height: 8),
           Text(
-            'Your notes will be read from and stored here. '
-            'We suggest choosing somewhere inside your Obsidian vault or your Obsidian vault.',
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+            'Choose where you\'d like to store your notes. This will be your vault directory.',
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
               color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+            ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 24),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: _isLoading ? null : _selectVaultLocation,
+              icon: _isLoading
+                  ? const SizedBox(
+                      height: 20,
+                      width: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.folder_open),
+              label: Text(_isLoading ? 'Setting up...' : 'Select Vault Location'),
             ),
           ),
         ],
@@ -309,31 +234,4 @@ class _VaultSetupScreenState extends State<VaultSetupScreen> {
     );
   }
 
-  Widget _buildActionButtons() {
-    return Column(
-      children: [
-        SizedBox(
-          width: double.infinity,
-          child: ElevatedButton(
-            onPressed: _isLoading ? null : _saveVaultDirectory,
-            child: _isLoading
-                ? const SizedBox(
-                    height: 20,
-                    width: 20,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : const Text('Confirm Vault Directory'),
-          ),
-        ),
-        const SizedBox(height: 16),
-        Text(
-          'You can change this location later in settings',
-          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
-          ),
-          textAlign: TextAlign.center,
-        ),
-      ],
-    );
-  }
 }
