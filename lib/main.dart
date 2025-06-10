@@ -4,8 +4,6 @@ import 'providers/vault_provider.dart';
 import 'screens/directory_screen.dart';
 import 'screens/vault_setup_screen.dart';
 import 'services/settings_service.dart';
-import 'services/permission_service.dart';
-import 'widgets/permission_request_widget.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
