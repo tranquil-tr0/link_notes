@@ -6,3 +6,4 @@
 - [ ] implement search
 - [ ] improve implementation of Widget _buildVaultStats (the pill) to do less function calling if easy enough
 - [ ] implement dynamic refresh of files like a (good) file manager (maybe)
+- [ ] improve interface for homescreen, too much padding under each note and folder card, improve folder look, make color choosable.
