@@ -6,3 +6,4 @@
 - [ ] flutter_staggered_grid_view notes selector - implement notes selector (directory_screen)
 - [ ] implement search
 - [ ] improve implementation of Widget _buildVaultStats (the pill) to do less function calling if easy enough
+- [ ] implement dynamic refresh of files like a (good) file manager (maybe)
