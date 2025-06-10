@@ -4,3 +4,4 @@
 - [ ] make the status bar (that shows folder name, count, and note count below the location and search) hidable (requires editing settings and directory_screen I think)
 - [ ] assess whether to have have photo, image, video permissions in my AndroidManifest.xml
 - [ ] get rid of all app state (to do with notes)
+- [ ] dynamic markdown editor
