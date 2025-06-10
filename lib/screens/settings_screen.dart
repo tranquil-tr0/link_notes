@@ -259,7 +259,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               'Select a new location for your vault. Your current notes will not be affected or moved.'
               '${Platform.isAndroid ? ' Access to your current directory cannot be revoked'
               ' by the application. You can manually revoke access permissions in App info '
-              '> Storage & cache.' : ''}',
+              '> Storage & cache' : ''}',
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
                 color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
               ),

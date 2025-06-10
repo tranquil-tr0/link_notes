@@ -28,6 +28,7 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
   List<Note> _searchResults = [];
   bool _isSearchLoading = false;
   bool _wasInitialized = false;
+  bool _isStatsExpanded = false;
   
   @override
   void initState() {
@@ -321,17 +322,76 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
       future: vaultProvider.getVaultStats(),
       builder: (context, snapshot) {
         final totalNotes = snapshot.data?['totalNotes'] ?? 0;
-        return Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-          decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.primaryContainer,
-            borderRadius: BorderRadius.circular(16),
-          ),
-          child: Text(
-            '$totalNotes notes',
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: Theme.of(context).colorScheme.onPrimaryContainer,
+        final totalFolders = snapshot.data?['totalFolders'] ?? 0;
+        
+        return GestureDetector(
+          onTap: () {
+            setState(() {
+              _isStatsExpanded = !_isStatsExpanded;
+            });
+          },
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.primaryContainer,
+              borderRadius: BorderRadius.circular(16),
             ),
+            child: _isStatsExpanded
+                ? FutureBuilder<List<dynamic>>(
+                    future: Future.wait([
+                      vaultProvider.getCurrentNotes(),
+                      vaultProvider.getCurrentFolders(),
+                    ]),
+                    builder: (context, currentSnapshot) {
+                      final currentNotes = currentSnapshot.hasData
+                          ? (currentSnapshot.data![0] as List).length
+                          : 0;
+                      final currentFolders = currentSnapshot.hasData
+                          ? (currentSnapshot.data![1] as List).length
+                          : 0;
+                      
+                      return Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            '$totalNotes total notes',
+                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: Theme.of(context).colorScheme.onPrimaryContainer,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            '$currentNotes notes here',
+                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: Theme.of(context).colorScheme.onPrimaryContainer,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            '$totalFolders total folders',
+                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: Theme.of(context).colorScheme.onPrimaryContainer,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            '$currentFolders folders here',
+                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: Theme.of(context).colorScheme.onPrimaryContainer,
+                            ),
+                          ),
+                        ],
+                      );
+                    },
+                  )
+                : Text(
+                    '$totalNotes notes',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: Theme.of(context).colorScheme.onPrimaryContainer,
+                    ),
+                  ),
           ),
         );
       },
@@ -565,12 +625,6 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
         return _buildDirectoryContents(vaultProvider, notes, folders);
       },
     );
-  }
-
-  Future<Map<String, dynamic>> _loadCurrentDirectoryContents(VaultProvider vaultProvider) async {
-    final notes = await vaultProvider.getCurrentNotes();
-    final folders = await vaultProvider.getCurrentFolders();
-    return {'notes': notes, 'folders': folders};
   }
 
   Widget _buildDirectoryContents(VaultProvider vaultProvider, List<Note> notes, List<String> folders) {

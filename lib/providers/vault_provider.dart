@@ -452,10 +452,19 @@ class VaultProvider extends ChangeNotifier {
       int totalNotes = 0;
       int totalFolders = 0;
       
-      await _countItemsInDirectory(Directory(_vaultDirectory!), (notes, folders) {
-        totalNotes += notes;
-        totalFolders += folders;
-      });
+      if (Platform.isAndroid) {
+        // Use SAF for Android
+        await _countItemsWithSaf('', (notes, folders) {
+          totalNotes += notes;
+          totalFolders += folders;
+        });
+      } else {
+        // Use traditional file system for other platforms
+        await _countItemsInDirectory(Directory(_vaultDirectory!), (notes, folders) {
+          totalNotes += notes;
+          totalFolders += folders;
+        });
+      }
       
       return {'totalNotes': totalNotes, 'totalFolders': totalFolders};
     } catch (e) {
@@ -464,7 +473,48 @@ class VaultProvider extends ChangeNotifier {
     }
   }
   
-  /// Recursively count notes and folders
+  /// Recursively count notes and folders using SAF (Android)
+  Future<void> _countItemsWithSaf(String path, Function(int notes, int folders) callback) async {
+    try {
+      int notes = 0;
+      int folders = 0;
+      
+      List<SafDocumentFile> safContents;
+      if (path.isEmpty) {
+        // Root directory
+        safContents = await PermissionService.instance.listSafContents();
+      } else {
+        // Subdirectory - get child by path
+        final pathParts = path.split('/');
+        final childDir = await PermissionService.instance.getChildByPath(pathParts);
+        if (childDir != null) {
+          final safUtil = SafUtil();
+          safContents = await safUtil.list(childDir.uri);
+        } else {
+          return;
+        }
+      }
+      
+      for (final safFile in safContents) {
+        if (!safFile.isDir && safFile.name.endsWith('.md')) {
+          // Count all .md files - no parsing checks needed
+          notes++;
+        } else if (safFile.isDir) {
+          folders++;
+          // Recursively count in subdirectories
+          final subPath = path.isEmpty ? safFile.name : '$path/${safFile.name}';
+          await _countItemsWithSaf(subPath, callback);
+        }
+      }
+      
+      callback(notes, folders);
+    } catch (e) {
+      // Skip directories that can't be read
+      debugPrint('Error counting items in SAF path "$path": $e');
+    }
+  }
+  
+  /// Recursively count notes and folders using traditional file system
   Future<void> _countItemsInDirectory(Directory directory, Function(int notes, int folders) callback) async {
     try {
       int notes = 0;
@@ -472,6 +522,7 @@ class VaultProvider extends ChangeNotifier {
       
       await for (final entity in directory.list()) {
         if (entity is File && entity.path.endsWith('.md')) {
+          // Count all .md files - no parsing checks needed
           notes++;
         } else if (entity is Directory) {
           folders++;
@@ -483,6 +534,7 @@ class VaultProvider extends ChangeNotifier {
       callback(notes, folders);
     } catch (e) {
       // Skip directories that can't be read
+      debugPrint('Error counting items in directory "${directory.path}": $e');
     }
   }
   
