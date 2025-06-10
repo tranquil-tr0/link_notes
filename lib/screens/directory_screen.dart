@@ -26,10 +26,8 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
   final TextEditingController _searchController = TextEditingController();
   bool _isSearching = false;
   List<Note> _searchResults = [];
-  bool _isSearchLoading = false;
   bool _wasInitialized = false;
   bool _isStatsExpanded = false;
-  bool _isSearchFieldExpanded = false;
 
   @override
   void initState() {
@@ -61,8 +59,6 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
           setState(() {
             _isSearching = false;
             _searchResults.clear();
-            _isSearchLoading = false;
-            _isSearchFieldExpanded = false;
             _searchController.clear();
           });
         } else if (!_wasInitialized && vaultProvider.isInitialized) {
@@ -409,7 +405,7 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
     return IconButton(
       onPressed: () {
         setState(() {
-          _isSearchFieldExpanded = true;
+
         });
       },
       icon: const Icon(Icons.search),
@@ -420,19 +416,17 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
   void _performSearch(VaultProvider vaultProvider, String query) async {
     setState(() {
       _isSearching = true;
-      _isSearchLoading = true;
+
     });
 
     try {
       final results = await vaultProvider.searchNotes(query);
       setState(() {
         _searchResults = results;
-        _isSearchLoading = false;
       });
     } catch (e) {
       setState(() {
         _searchResults = [];
-        _isSearchLoading = false;
       });
     }
   }
@@ -846,32 +840,6 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
             ],
           ),
         ),
-      ),
-    );
-  }
-
-  Widget _buildNoteListItem(Note note) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: 8),
-      child: ListTile(
-        leading: const Icon(Icons.note),
-        title: Text(note.title, maxLines: 1, overflow: TextOverflow.ellipsis),
-        subtitle: Text(
-          note.content,
-          maxLines: 2,
-          overflow: TextOverflow.ellipsis,
-        ),
-        trailing: Text(
-          _formatDate(note.modifiedAt),
-          style: Theme.of(context).textTheme.bodySmall,
-        ),
-        onTap: () {
-          Navigator.of(context).push(
-            MaterialPageRoute(
-              builder: (context) => NoteEditorScreen(note: note),
-            ),
-          );
-        },
       ),
     );
   }

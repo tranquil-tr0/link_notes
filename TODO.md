@@ -8,6 +8,6 @@
 - [ ] flutter_staggered_grid_view notes selector - implement notes selector (directory_screen)
 - [x] fix inconsistency in notes count
 - [ ] make search box smaller
-- [ ] fix search functionality
+- [ ] implement search
 - [x] remove status bar
 - [ ] improve implementation of Widget _buildVaultStats (the pill) to do less function calling if easy enough
