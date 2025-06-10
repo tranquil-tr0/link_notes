@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../services/settings_service.dart';
 import '../services/permission_service.dart';
 import '../providers/vault_provider.dart';
+import '../utils/path_utils.dart';
 import 'dart:io';
 
 class SettingsScreen extends StatefulWidget {
@@ -47,6 +48,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
           final safUri = await PermissionService.instance.getVaultSafUri();
           if (safUri != null) {
             newDirectoryPath = safUri;
+            
+            // Show user-friendly confirmation of selected location
+            final displayPath = PathUtils.safUriToDisplayPath(safUri);
+            final description = PathUtils.getStorageLocationDescription(safUri);
+            debugPrint('Selected new vault location: $displayPath ($description)');
           } else {
             setState(() {
               _error = 'Failed to get storage access URI. Please try again.';
@@ -68,6 +74,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
         if (result != null) {
           newDirectoryPath = result;
+          
+          // Show user-friendly confirmation of selected location
+          final displayPath = PathUtils.safUriToDisplayPath(result);
+          debugPrint('Selected new vault location: $displayPath');
         } else {
           return; // User cancelled
         }
@@ -91,7 +101,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
       final vaultProvider = context.read<VaultProvider>();
       
       if (Platform.isAndroid) {
-        // For Android with SAF, just save the URI
+        // For Android with SAF, update both PermissionService and SettingsService
+        await PermissionService.instance.setVaultSafUri(newDirectoryPath);
         await _settingsService.setVaultDirectory(newDirectoryPath);
       } else {
         // For other platforms, test directory access
@@ -192,11 +203,35 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 color: Theme.of(context).colorScheme.surfaceContainerHighest,
                 borderRadius: BorderRadius.circular(8),
               ),
-              child: Text(
-                _currentVaultDirectory ?? 'Not set',
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  fontFamily: 'monospace',
-                ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    PathUtils.safUriToDisplayPath(_currentVaultDirectory) ?? 'Not set',
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  if (_currentVaultDirectory != null) ...[
+                    const SizedBox(height: 4),
+                    Text(
+                      PathUtils.getStorageLocationDescription(_currentVaultDirectory),
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                        fontStyle: FontStyle.italic,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      _currentVaultDirectory!,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        fontFamily: 'monospace',
+                        color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5),
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ],
               ),
             ),
             const SizedBox(height: 24),

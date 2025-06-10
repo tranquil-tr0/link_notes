@@ -3,6 +3,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:path_provider/path_provider.dart';
 import '../services/settings_service.dart';
 import '../services/permission_service.dart';
+import '../utils/path_utils.dart';
 import 'dart:io';
 
 class VaultSetupScreen extends StatefulWidget {
@@ -33,7 +34,16 @@ class _VaultSetupScreenState extends State<VaultSetupScreen> {
         if (granted) {
           final safUri = await PermissionService.instance.getVaultSafUri();
           if (safUri != null) {
+            // Show user-friendly confirmation of selected location
+            final displayPath = PathUtils.safUriToDisplayPath(safUri);
+            final description = PathUtils.getStorageLocationDescription(safUri);
+            
+            debugPrint('Selected vault location: $displayPath ($description)');
+            
             // Immediately save the SAF URI as the vault directory
+            // PermissionService.requestStoragePermission() already saves the URI,
+            // but we ensure both services are synchronized
+            await PermissionService.instance.setVaultSafUri(safUri);
             await _settingsService.setVaultDirectory(safUri);
             await _settingsService.setFirstLaunchCompleted();
 
@@ -97,6 +107,10 @@ class _VaultSetupScreenState extends State<VaultSetupScreen> {
       final testFile = File('$directoryPath/.test_write');
       await testFile.writeAsString('test');
       await testFile.delete();
+
+      // Show user-friendly confirmation of selected location
+      final displayPath = PathUtils.safUriToDisplayPath(directoryPath);
+      debugPrint('Selected vault location: $displayPath');
 
       // Save the directory to settings
       await _settingsService.setVaultDirectory(directoryPath);

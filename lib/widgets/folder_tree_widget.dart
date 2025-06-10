@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/folder.dart';
+import '../utils/path_utils.dart';
 
 /// A widget that displays a hierarchical tree of folders
 /// 
@@ -149,7 +150,7 @@ class _FolderTreeWidgetState extends State<FolderTreeWidget> {
                 // Folder name
                 Expanded(
                   child: Text(
-                    folder.name,
+                    folder.displayName,
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                       color: isCurrentFolder
                           ? Theme.of(context).colorScheme.onPrimaryContainer
@@ -224,7 +225,7 @@ class FolderTreeItem extends StatelessWidget {
           size: 20,
         ),
         title: Text(
-          folder.name,
+          folder.displayName,
           style: Theme.of(context).textTheme.bodyMedium,
         ),
         trailing: folder.notes.isNotEmpty

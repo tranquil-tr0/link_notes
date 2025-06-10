@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:saf_util/saf_util_platform_interface.dart';
+import '../utils/path_utils.dart';
 
 class Note {
   final String id;
@@ -202,10 +203,30 @@ modified_at: ${modifiedAt.toIso8601String()}
   }
 
   /// Gets the file name without extension
-  String get fileName => filePath.split('/').last.replaceAll('.md', '');
+  String get fileName {
+    if (PathUtils.isSafUri(filePath)) {
+      // For SAF URIs, extract the name from the URI structure
+      return PathUtils.extractFolderName(filePath).replaceAll('.md', '');
+    } else {
+      return filePath.split('/').last.replaceAll('.md', '');
+    }
+  }
 
   /// Gets the directory path
-  String get directoryPath => filePath.substring(0, filePath.lastIndexOf('/'));
+  String get directoryPath {
+    if (PathUtils.isSafUri(filePath)) {
+      // For SAF URIs, return a meaningful parent path representation
+      return PathUtils.safUriToInternalPath(filePath.substring(0, filePath.lastIndexOf('/')));
+    } else {
+      return filePath.substring(0, filePath.lastIndexOf('/'));
+    }
+  }
+
+  /// Gets a display-friendly file path for UI purposes
+  String get displayPath => PathUtils.safUriToDisplayPath(filePath);
+
+  /// Gets a display-friendly directory path for UI purposes
+  String get displayDirectoryPath => PathUtils.safUriToDisplayPath(directoryPath);
 
   @override
   String toString() {

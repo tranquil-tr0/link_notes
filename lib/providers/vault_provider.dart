@@ -5,6 +5,7 @@ import 'package:saf_util/saf_util_platform_interface.dart';
 import '../models/note.dart';
 import '../services/settings_service.dart';
 import '../services/permission_service.dart';
+import '../utils/path_utils.dart';
 
 /// Vault provider that reads notes and folders directly from the file system
 /// 
@@ -30,6 +31,15 @@ class VaultProvider extends ChangeNotifier {
   
   /// String path of the vault directory
   String get vaultPath => _vaultDirectory ?? 'Error: Vault not initialized';
+  
+  /// Human-readable display path of the vault directory
+  String get vaultDisplayPath => PathUtils.safUriToDisplayPath(_vaultDirectory);
+  
+  /// Short display name for the vault location
+  String get vaultDisplayName => PathUtils.getVaultDisplayName(_vaultDirectory);
+  
+  /// User-friendly description of the storage location
+  String get storageLocationDescription => PathUtils.getStorageLocationDescription(_vaultDirectory);
 
   /// Current folder path relative to vault root
   String get currentPath => _currentPath;
@@ -58,6 +68,7 @@ class VaultProvider extends ChangeNotifier {
   
   /// Initialize the vault provider
   Future<void> initialize() async {
+    print('Initializing VaultProvider...');
     if (_initialized) return;
     
     _setLoading(true);
@@ -136,9 +147,22 @@ class VaultProvider extends ChangeNotifier {
     
     try {
       // Verify new directory exists
-      final vaultDir = Directory(newPath);
-      if (!await vaultDir.exists()) {
-        throw Exception('Directory does not exist: $newPath');
+      if (Platform.isAndroid) {
+        // For Android with SAF, verify we have access to the vault URI
+        // First update the SAF URI in PermissionService
+        await PermissionService.instance.setVaultSafUri(newPath);
+        
+        // Then verify we can access it
+        final vaultDirectory = await PermissionService.instance.getVaultDirectory();
+        if (vaultDirectory == null) {
+          throw Exception('Cannot access vault directory. Please re-select the folder.');
+        }
+      } else {
+        // For other platforms, verify vault directory exists using traditional file system
+        final vaultDir = Directory(newPath);
+        if (!await vaultDir.exists()) {
+          throw Exception('Directory does not exist: $newPath');
+        }
       }
       
       // Update settings
@@ -173,10 +197,28 @@ class VaultProvider extends ChangeNotifier {
       path = path.endsWith('/') && path.isNotEmpty ? path.substring(0, path.length - 1) : path;
       
       // Verify path exists
-      final fullPath = path.isEmpty ? _vaultDirectory! : '$_vaultDirectory/$path';
-      final directory = Directory(fullPath);
+      bool pathExists = false;
       
-      if (!await directory.exists()) {
+      if (Platform.isAndroid) {
+        // Use SAF for Android
+        if (path.isEmpty) {
+          // Root path - check if vault directory is accessible
+          final vaultDir = await PermissionService.instance.getVaultDirectory();
+          pathExists = vaultDir != null;
+        } else {
+          // Subdirectory - check if it exists using SAF
+          final pathParts = path.split('/');
+          final targetDir = await PermissionService.instance.getChildByPath(pathParts);
+          pathExists = targetDir != null && targetDir.isDir;
+        }
+      } else {
+        // Use traditional file system for other platforms
+        final fullPath = path.isEmpty ? _vaultDirectory! : '$_vaultDirectory/$path';
+        final directory = Directory(fullPath);
+        pathExists = await directory.exists();
+      }
+      
+      if (!pathExists) {
         throw Exception('Directory does not exist: $path');
       }
       

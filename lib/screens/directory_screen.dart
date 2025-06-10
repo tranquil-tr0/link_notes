@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/vault_provider.dart';
 import '../models/note.dart';
+import '../utils/path_utils.dart';
 import 'note_editor_screen.dart';
 import 'settings_screen.dart';
 
@@ -26,6 +27,7 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
   bool _isSearching = false;
   List<Note> _searchResults = [];
   bool _isSearchLoading = false;
+  bool _wasInitialized = false;
   
   @override
   void initState() {
@@ -37,6 +39,7 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
       if (!vaultProvider.isInitialized) {
         vaultProvider.initialize();
       }
+      _wasInitialized = vaultProvider.isInitialized;
     });
   }
 
@@ -50,6 +53,27 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
   Widget build(BuildContext context) {
     return Consumer<VaultProvider>(
       builder: (context, vaultProvider, child) {
+        // Check if vault provider was re-initialized (e.g., after directory change)
+        if (_wasInitialized && !vaultProvider.isInitialized) {
+          // VaultProvider was reset, clear our state
+          setState(() {
+            _isSearching = false;
+            _searchResults.clear();
+            _isSearchLoading = false;
+            _searchController.clear();
+          });
+        } else if (!_wasInitialized && vaultProvider.isInitialized) {
+          // VaultProvider just got initialized, refresh our view
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) {
+              setState(() {});
+            }
+          });
+        }
+        
+        // Update our tracking of initialization state
+        _wasInitialized = vaultProvider.isInitialized;
+        
         return PopScope(
           canPop: vaultProvider.isInRoot,
           onPopInvokedWithResult: (didPop, result) async {
@@ -146,7 +170,13 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
             ],
             ElevatedButton.icon(
               onPressed: () {
+                // Re-initialize VaultProvider and navigate to fresh DirectoryScreen
                 vaultProvider.initialize();
+                Navigator.of(context).pushReplacement(
+                  MaterialPageRoute(
+                    builder: (context) => const DirectoryScreen(),
+                  ),
+                );
               },
               icon: const Icon(Icons.refresh),
               label: const Text('Retry'),
@@ -224,9 +254,24 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
             children: [
               const Icon(Icons.folder, size: 24),
               const SizedBox(width: 8),
-              Text(
-                'My Vault',
-                style: Theme.of(context).textTheme.headlineSmall,
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'My Vault',
+                      style: Theme.of(context).textTheme.headlineSmall,
+                    ),
+                    if (vaultProvider.vaultDisplayName != 'No Vault')
+                      Text(
+                        vaultProvider.vaultDisplayName,
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                  ],
+                ),
               ),
               const Spacer(),
               _buildVaultStats(vaultProvider),
@@ -350,7 +395,11 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
   }
 
   Widget _buildBreadcrumbs(VaultProvider vaultProvider) {
-    final segments = ['Home', ...vaultProvider.pathSegments];
+    // Use PathUtils to generate proper breadcrumb segments
+    final segments = PathUtils.getBreadcrumbSegments(
+      vaultProvider.vaultPath,
+      vaultProvider.currentPath,
+    );
     
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
@@ -361,8 +410,13 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
               onTap: () {
                 if (i == 0) {
                   vaultProvider.navigateToRoot();
+                } else if (i == 1) {
+                  // Navigate to vault root
+                  vaultProvider.navigateToRoot();
                 } else {
-                  final path = vaultProvider.pathSegments.take(i).join('/');
+                  // Navigate to specific path within vault
+                  final pathSegments = segments.skip(2).take(i - 1).toList();
+                  final path = pathSegments.join('/');
                   vaultProvider.navigateToPath(path);
                 }
               },
@@ -378,22 +432,26 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Icon(
-                      i == 0 ? Icons.home : Icons.folder,
+                      i == 0 ? Icons.home : (i == 1 ? Icons.folder_special : Icons.folder),
                       size: 16,
                       color: i == segments.length - 1
                           ? Theme.of(context).colorScheme.primary
                           : Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                     ),
                     const SizedBox(width: 4),
-                    Text(
-                      segments[i],
-                      style: TextStyle(
-                        color: i == segments.length - 1
-                            ? Theme.of(context).colorScheme.primary
-                            : Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
-                        fontWeight: i == segments.length - 1
-                            ? FontWeight.w600
-                            : FontWeight.normal,
+                    ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 120),
+                      child: Text(
+                        segments[i],
+                        style: TextStyle(
+                          color: i == segments.length - 1
+                              ? Theme.of(context).colorScheme.primary
+                              : Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                          fontWeight: i == segments.length - 1
+                              ? FontWeight.w600
+                              : FontWeight.normal,
+                        ),
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
                   ],
@@ -526,15 +584,7 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
               const Icon(Icons.folder_open, size: 20),
               const SizedBox(width: 8),
               Text(
-                vaultProvider.isInRoot
-                  ? (() {
-                    final rootDir = vaultProvider.vaultPath;
-                    final segments = rootDir.split('/');
-                    return segments.isNotEmpty ? segments.last : 'Vault Root';
-                    })()
-                  : vaultProvider.pathSegments.isNotEmpty
-                    ? vaultProvider.pathSegments.last
-                    : 'Current Folder',
+                vaultProvider.vaultDisplayName,
                 style: Theme.of(context).textTheme.titleMedium,
               ),
               const Spacer(),

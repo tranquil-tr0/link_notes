@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'note.dart';
+import '../utils/path_utils.dart';
 
 class Folder {
   final String name;
@@ -255,6 +256,12 @@ class Folder {
       parent: parent ?? this.parent,
     );
   }
+
+  /// Gets a display-friendly path for UI purposes
+  String get displayPath => PathUtils.safUriToDisplayPath(path);
+
+  /// Gets a display-friendly name for UI purposes
+  String get displayName => PathUtils.extractFolderName(path);
 
   @override
   String toString() {
