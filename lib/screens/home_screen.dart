@@ -500,7 +500,15 @@ class _HomeScreenState extends State<HomeScreen> {
               const Icon(Icons.folder_open, size: 20),
               const SizedBox(width: 8),
               Text(
-                vaultProvider.isInRoot ? 'Vault Root' : 'Current Folder',
+                vaultProvider.isInRoot
+                  ? (() {
+                    final rootDir = vaultProvider.vaultPath;
+                    final segments = rootDir.split('/');
+                    return segments.isNotEmpty ? segments.last : 'Vault Root';
+                    })()
+                  : vaultProvider.pathSegments.isNotEmpty
+                    ? vaultProvider.pathSegments.last
+                    : 'Current Folder',
                 style: Theme.of(context).textTheme.titleMedium,
               ),
               const Spacer(),
