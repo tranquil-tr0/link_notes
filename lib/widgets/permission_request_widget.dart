@@ -94,7 +94,7 @@ class _PermissionRequestWidgetState extends State<PermissionRequestWidget> {
   }
 
   Future<void> _openSettings() async {
-    await _permissionService.openAppSettings();
+    await _permissionService.openSettings();
     // Re-check permissions after returning from settings
     await Future.delayed(const Duration(milliseconds: 500));
     await _checkPermission();

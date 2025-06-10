@@ -114,8 +114,13 @@ class PermissionService {
   }
 
   /// Open app settings for manual permission grant
-  Future<bool> openAppSettings() async {
-    return await Permission.storage.request().isGranted;
+  Future<bool> openSettings() async {
+    try {
+      return await openAppSettings();
+    } catch (e) {
+      debugPrint('Failed to open app settings: $e');
+      return false;
+    }
   }
 
   /// Get Android SDK version (mock implementation)

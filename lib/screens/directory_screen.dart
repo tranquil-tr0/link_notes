@@ -108,29 +108,42 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
   }
 
   Widget _buildErrorScreen(VaultProvider vaultProvider) {
+    final error = vaultProvider.error!;
+    final isPermissionError = error.toLowerCase().contains('permission');
+    
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(24.0),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(
-              Icons.error_outline,
+            Icon(
+              isPermissionError ? Icons.folder_special : Icons.error_outline,
               size: 64,
-              color: Colors.red,
+              color: isPermissionError ? Colors.orange : Colors.red,
             ),
             const SizedBox(height: 16),
             Text(
-              'Error Loading Vault',
+              isPermissionError ? 'Permission Required' : 'Error Loading Vault',
               style: Theme.of(context).textTheme.headlineSmall,
             ),
             const SizedBox(height: 8),
             Text(
-              vaultProvider.error!,
+              error,
               textAlign: TextAlign.center,
               style: Theme.of(context).textTheme.bodyMedium,
             ),
             const SizedBox(height: 24),
+            if (isPermissionError) ...[
+              ElevatedButton.icon(
+                onPressed: () {
+                  vaultProvider.refreshPermissions();
+                },
+                icon: const Icon(Icons.security),
+                label: const Text('Grant Permissions'),
+              ),
+              const SizedBox(height: 12),
+            ],
             ElevatedButton.icon(
               onPressed: () {
                 vaultProvider.initialize();

@@ -104,6 +104,40 @@ class VaultProvider extends ChangeNotifier {
     }
   }
   
+  /// Refresh permissions and re-initialize if needed
+  Future<void> refreshPermissions() async {
+    _setLoading(true);
+    _clearError();
+    
+    try {
+      final permissionService = PermissionService.instance;
+      bool hasPermission = await permissionService.hasStoragePermission();
+      
+      if (!hasPermission) {
+        // Try to request permissions again
+        hasPermission = await permissionService.requestStoragePermission();
+        
+        if (!hasPermission) {
+          // Check if permanently denied
+          final isPermanentlyDenied = await permissionService.isPermissionPermanentlyDenied();
+          if (isPermanentlyDenied) {
+            throw Exception('Storage permissions are permanently denied. Please enable them in Settings > Apps > Link Notes > Permissions');
+          } else {
+            throw Exception('Storage permissions are required to access your notes');
+          }
+        }
+      }
+      
+      // If we got permissions, clear any existing errors and notify listeners
+      _clearError();
+      notifyListeners();
+    } catch (e) {
+      _setError('Failed to refresh permissions: $e');
+    } finally {
+      _setLoading(false);
+    }
+  }
+  
   /// Change vault directory
   Future<void> changeVaultDirectory(String newPath) async {
     _setLoading(true);
@@ -200,7 +234,8 @@ class VaultProvider extends ChangeNotifier {
       
       if (!hasPermission) {
         debugPrint('Storage permission denied - cannot read notes');
-        throw Exception('Storage permission required to read notes');
+        _setError('Storage permission required to read notes. Please grant permission in app settings.');
+        return [];
       }
       
       final directory = Directory(currentFullPath);
@@ -225,6 +260,7 @@ class VaultProvider extends ChangeNotifier {
       return notes;
     } catch (e) {
       debugPrint('Error fetching notes: $e');
+      _setError('Failed to read notes: $e');
       return [];
     }
   }
@@ -234,6 +270,16 @@ class VaultProvider extends ChangeNotifier {
     if (!_initialized || _vaultDirectory == null) return [];
     
     try {
+      // Check permissions before attempting to read directories
+      final permissionService = PermissionService.instance;
+      final hasPermission = await permissionService.hasStoragePermission();
+      
+      if (!hasPermission) {
+        debugPrint('Storage permission denied - cannot read folders');
+        _setError('Storage permission required to read folders. Please grant permission in app settings.');
+        return [];
+      }
+      
       final directory = Directory(currentFullPath);
       if (!await directory.exists()) return [];
       
@@ -251,6 +297,7 @@ class VaultProvider extends ChangeNotifier {
       return folders;
     } catch (e) {
       debugPrint('Error fetching folders: $e');
+      _setError('Failed to read folders: $e');
       return [];
     }
   }
