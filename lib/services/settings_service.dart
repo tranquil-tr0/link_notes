@@ -59,6 +59,7 @@ class SettingsService {
         }
       }
     }
+    _ensureInitialized();
   }
   
   /// Migrate data from fallback storage to SharedPreferences
