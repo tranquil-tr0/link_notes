@@ -78,11 +78,20 @@ class PermissionService {
     if (Platform.isAndroid) {
       final androidInfo = await _getAndroidSdkVersion();
       
+      // if (androidInfo >= 33) {
+      //   return await Permission.photos.shouldShowRequestRationale ||
+      //          await Permission.videos.shouldShowRequestRationale ||
+      //          await Permission.audio.shouldShowRequestRationale;
+      // } else if (androidInfo >= 30) {
+      //   return await Permission.manageExternalStorage.shouldShowRequestRationale;
+      // } else {
+      //   return await Permission.storage.shouldShowRequestRationale;
+      // }
       if (androidInfo >= 33) {
         return await Permission.photos.shouldShowRequestRationale ||
                await Permission.videos.shouldShowRequestRationale ||
                await Permission.audio.shouldShowRequestRationale;
-      } else if (androidInfo >= 30) {
+      } if (androidInfo >= 30) {
         return await Permission.manageExternalStorage.shouldShowRequestRationale;
       } else {
         return await Permission.storage.shouldShowRequestRationale;
