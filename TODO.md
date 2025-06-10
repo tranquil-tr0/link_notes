@@ -13,3 +13,4 @@
 - [ ] show the old folder tree on the side on rightward swipe?
 - [ ] quick settings panel quick note
 - [ ] update versions of all the libraries
+- [ ] fix padding for notes panel
