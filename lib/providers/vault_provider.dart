@@ -25,6 +25,9 @@ class VaultProvider extends ChangeNotifier {
   
   // ==================== GETTERS ====================
   
+  /// String path of the vault directory
+  String get vaultPath => _vaultDirectory ?? 'Error: Vault not initialized';
+
   /// Current folder path relative to vault root
   String get currentPath => _currentPath;
   
