@@ -29,6 +29,7 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
   bool _isSearchLoading = false;
   bool _wasInitialized = false;
   bool _isStatsExpanded = false;
+  bool _isSearchFieldExpanded = false;
   
   @override
   void initState() {
@@ -61,6 +62,7 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
             _isSearching = false;
             _searchResults.clear();
             _isSearchLoading = false;
+            _isSearchFieldExpanded = false;
             _searchController.clear();
           });
         } else if (!_wasInitialized && vaultProvider.isInitialized) {
@@ -84,6 +86,7 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
           },
           child: Scaffold(
             body: SafeArea(
+              bottom: false,
               child: Builder(
                 builder: (context) {
                   if (!vaultProvider.isInitialized && vaultProvider.isLoading) {
@@ -433,38 +436,76 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
   }
 
   Widget _buildSearchField(VaultProvider vaultProvider) {
-    return TextField(
-      controller: _searchController,
-      decoration: InputDecoration(
-        hintText: 'Search notes...',
-        prefixIcon: const Icon(Icons.search),
-        suffixIcon: _isSearching
-            ? IconButton(
-                onPressed: () {
-                  _searchController.clear();
-                  setState(() {
-                    _isSearching = false;
-                    _searchResults = [];
-                  });
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeInOut,
+        width: _isSearchFieldExpanded ? 300 : 48, // Fixed width for animation
+        height: _isSearchFieldExpanded ? 48 : 24,
+        child: _isSearchFieldExpanded
+            ? TextField(
+                controller: _searchController,
+                autofocus: true,
+                decoration: InputDecoration(
+                  hintText: 'Search notes...',
+                  prefixIcon: const Icon(Icons.search),
+                  suffixIcon: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (_isSearching)
+                        IconButton(
+                          onPressed: () {
+                            _searchController.clear();
+                            setState(() {
+                              _isSearching = false;
+                              _searchResults = [];
+                            });
+                          },
+                          icon: const Icon(Icons.clear),
+                        ),
+                      IconButton(
+                        onPressed: () {
+                          _searchController.clear();
+                          setState(() {
+                            _isSearchFieldExpanded = false;
+                            _isSearching = false;
+                            _searchResults = [];
+                          });
+                        },
+                        icon: const Icon(Icons.close),
+                      ),
+                    ],
+                  ),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                ),
+                onChanged: (query) {
+                  if (query.isNotEmpty) {
+                    _performSearch(vaultProvider, query);
+                  } else {
+                    setState(() {
+                      _isSearching = false;
+                      _searchResults = [];
+                    });
+                  }
                 },
-                icon: const Icon(Icons.clear),
               )
-            : null,
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            : Align(
+                alignment: Alignment.center,
+                child: IconButton(
+                  onPressed: () {
+                    setState(() {
+                      _isSearchFieldExpanded = true;
+                    });
+                  },
+                  icon: const Icon(Icons.search),
+                  tooltip: 'Search notes',
+                ),
+              ),
       ),
-      onChanged: (query) {
-        if (query.isNotEmpty) {
-          _performSearch(vaultProvider, query);
-        } else {
-          setState(() {
-            _isSearching = false;
-            _searchResults = [];
-          });
-        }
-      },
     );
   }
 
