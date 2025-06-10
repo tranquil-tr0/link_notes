@@ -13,38 +13,26 @@ class PermissionService {
   /// Check if storage permissions are granted
   Future<bool> hasStoragePermission() async {
     if (kIsWeb) return true; // Web doesn't need storage permissions
-    
+
     if (Platform.isAndroid) {
-      // Check based on Android version
-      final androidInfo = await _getAndroidSdkVersion();
-      
-      if (androidInfo >= 33) {
-        // Android 13+ (API 33+) - Check media permissions
-        return await Permission.photos.isGranted &&
-               await Permission.videos.isGranted &&
-               await Permission.audio.isGranted;
-      } else if (androidInfo >= 30) {
-        // Android 11-12 (API 30-32) - Check manage external storage
-        return await Permission.manageExternalStorage.isGranted;
-      } else {
-        // Android 10 and below (API 29 and below)
-        return await Permission.storage.isGranted;
-      }
+      return await Permission.photos.isGranted &&
+          await Permission.videos.isGranted &&
+          await Permission.audio.isGranted;
     } else if (Platform.isIOS) {
       // iOS doesn't require explicit storage permissions for app documents
       return true;
     }
-    
+
     return false;
   }
 
   /// Request storage permissions
   Future<bool> requestStoragePermission() async {
     if (kIsWeb) return true; // Web doesn't need storage permissions
-    
+
     if (Platform.isAndroid) {
       final androidInfo = await _getAndroidSdkVersion();
-      
+
       if (androidInfo >= 33) {
         // Android 13+ (API 33+) - Request media permissions
         final Map<Permission, PermissionStatus> statuses = await [
@@ -52,7 +40,7 @@ class PermissionService {
           Permission.videos,
           Permission.audio,
         ].request();
-        
+
         return statuses.values.every((status) => status.isGranted);
       } else if (androidInfo >= 30) {
         // Android 11-12 (API 30-32) - Request manage external storage
@@ -67,17 +55,17 @@ class PermissionService {
       // iOS doesn't require explicit storage permissions for app documents
       return true;
     }
-    
+
     return false;
   }
 
   /// Check if we should show permission rationale
   Future<bool> shouldShowPermissionRationale() async {
     if (kIsWeb || Platform.isIOS) return false;
-    
+
     if (Platform.isAndroid) {
       final androidInfo = await _getAndroidSdkVersion();
-      
+
       // if (androidInfo >= 33) {
       //   return await Permission.photos.shouldShowRequestRationale ||
       //          await Permission.videos.shouldShowRequestRationale ||
@@ -89,36 +77,39 @@ class PermissionService {
       // }
       if (androidInfo >= 33) {
         return await Permission.photos.shouldShowRequestRationale ||
-               await Permission.videos.shouldShowRequestRationale ||
-               await Permission.audio.shouldShowRequestRationale;
-      } if (androidInfo >= 30) {
-        return await Permission.manageExternalStorage.shouldShowRequestRationale;
+            await Permission.videos.shouldShowRequestRationale ||
+            await Permission.audio.shouldShowRequestRationale;
+      }
+      if (androidInfo >= 30) {
+        return await Permission
+            .manageExternalStorage
+            .shouldShowRequestRationale;
       } else {
         return await Permission.storage.shouldShowRequestRationale;
       }
     }
-    
+
     return false;
   }
 
   /// Check if permissions are permanently denied
   Future<bool> isPermissionPermanentlyDenied() async {
     if (kIsWeb || Platform.isIOS) return false;
-    
+
     if (Platform.isAndroid) {
       final androidInfo = await _getAndroidSdkVersion();
-      
+
       if (androidInfo >= 33) {
         return await Permission.photos.isPermanentlyDenied ||
-               await Permission.videos.isPermanentlyDenied ||
-               await Permission.audio.isPermanentlyDenied;
+            await Permission.videos.isPermanentlyDenied ||
+            await Permission.audio.isPermanentlyDenied;
       } else if (androidInfo >= 30) {
         return await Permission.manageExternalStorage.isPermanentlyDenied;
       } else {
         return await Permission.storage.isPermanentlyDenied;
       }
     }
-    
+
     return false;
   }
 
@@ -157,10 +148,10 @@ class PermissionService {
   String getPermissionRequirementsMessage() {
     if (Platform.isAndroid) {
       return 'This app needs storage access to read and write your markdown notes. '
-             'We will only access the specific folders you choose for your notes vault.';
+          'We will only access the specific folders you choose for your notes vault.';
     } else if (Platform.isIOS) {
       return 'This app needs access to documents to read and write your markdown notes. '
-             'Your notes will be stored in your chosen directory.';
+          'Your notes will be stored in your chosen directory.';
     } else {
       return 'File access is required to manage your notes.';
     }
