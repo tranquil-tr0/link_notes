@@ -593,21 +593,21 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
   }
 
   Widget _buildMainContent(VaultProvider vaultProvider) {
-    return FutureBuilder<Map<String, dynamic>>(
-      future: _loadCurrentDirectoryContents(vaultProvider),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
+    return FutureBuilder<List<Note>>(
+      future: vaultProvider.getCurrentNotes(),
+      builder: (context, notesSnapshot) {
+        if (notesSnapshot.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator());
         }
         
-        if (snapshot.hasError) {
+        if (notesSnapshot.hasError) {
           return Center(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 const Icon(Icons.error, size: 48, color: Colors.red),
                 const SizedBox(height: 16),
-                Text('Error loading directory: ${snapshot.error}'),
+                Text('Error loading directory: ${notesSnapshot.error}'),
                 const SizedBox(height: 16),
                 ElevatedButton(
                   onPressed: () => vaultProvider.refresh(),
@@ -618,11 +618,37 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
           );
         }
         
-        final data = snapshot.data ?? {};
-        final notes = data['notes'] as List<Note>? ?? [];
-        final folders = data['folders'] as List<String>? ?? [];
-        
-        return _buildDirectoryContents(vaultProvider, notes, folders);
+        return FutureBuilder<List<String>>(
+          future: vaultProvider.getCurrentFolders(),
+          builder: (context, foldersSnapshot) {
+            if (foldersSnapshot.connectionState == ConnectionState.waiting) {
+              return const Center(child: CircularProgressIndicator());
+            }
+            
+            if (foldersSnapshot.hasError) {
+              return Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(Icons.error, size: 48, color: Colors.red),
+                    const SizedBox(height: 16),
+                    Text('Error loading directory: ${foldersSnapshot.error}'),
+                    const SizedBox(height: 16),
+                    ElevatedButton(
+                      onPressed: () => vaultProvider.refresh(),
+                      child: const Text('Retry'),
+                    ),
+                  ],
+                ),
+              );
+            }
+            
+            final notes = notesSnapshot.data ?? [];
+            final folders = foldersSnapshot.data ?? [];
+            
+            return _buildDirectoryContents(vaultProvider, notes, folders);
+          },
+        );
       },
     );
   }
@@ -630,32 +656,9 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
   Widget _buildDirectoryContents(VaultProvider vaultProvider, List<Note> notes, List<String> folders) {
     return Container(
       padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              const Icon(Icons.folder_open, size: 20),
-              const SizedBox(width: 8),
-              Text(
-                vaultProvider.vaultDisplayName,
-                style: Theme.of(context).textTheme.titleMedium,
-              ),
-              const Spacer(),
-              Text(
-                '${folders.length} folders • ${notes.length} notes',
-                style: Theme.of(context).textTheme.bodySmall,
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          Expanded(
-            child: notes.isEmpty && folders.isEmpty
-                ? _buildEmptyDirectoryState(vaultProvider)
-                : _buildDirectoryGrid(vaultProvider, notes, folders),
-          ),
-        ],
-      ),
+      child: notes.isEmpty && folders.isEmpty
+          ? _buildEmptyDirectoryState(vaultProvider)
+          : _buildDirectoryGrid(vaultProvider, notes, folders),
     );
   }
 

@@ -9,4 +9,4 @@
 - [x] fix inconsistency in notes count
 - [ ] make search box smaller
 - [ ] fix search functionality
-- [ ] remove status bar
+- [x] remove status bar
