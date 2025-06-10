@@ -30,33 +30,9 @@ class _VaultSetupScreenState extends State<VaultSetupScreen> {
   Future<void> _setDefaultDirectory() async {
     try {
       String defaultPath;
-      
-      if (Platform.isAndroid) {
-        // For Android, try to use external storage documents directory
-        try {
-          final directory = await getExternalStorageDirectory();
-          if (directory != null) {
-            // Use Downloads/Link Notes for better user access
-            defaultPath = '/storage/emulated/0/Download/Link Notes';
-          } else {
-            // Fallback to app documents directory
-            final appDir = await getApplicationDocumentsDirectory();
-            defaultPath = '${appDir.path}/Link Notes';
-          }
-        } catch (e) {
-          // Fallback to app documents directory
-          final appDir = await getApplicationDocumentsDirectory();
-          defaultPath = '${appDir.path}/Link Notes';
-        }
-      } else if (Platform.isIOS) {
-        // For iOS, use documents directory
-        final directory = await getApplicationDocumentsDirectory();
-        defaultPath = '${directory.path}/Link Notes';
-      } else {
-        // For other platforms, use documents directory
-        final directory = await getApplicationDocumentsDirectory();
-        defaultPath = '${directory.path}/Link Notes';
-      }
+
+      final directory = await getApplicationDocumentsDirectory();
+      defaultPath = '${directory.path}/Link Notes';
       
       setState(() {
         _selectedDirectory = defaultPath;
