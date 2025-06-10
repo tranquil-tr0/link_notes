@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:provider/provider.dart';
 import '../services/settings_service.dart';
-import '../providers/notes_provider.dart';
+import '../providers/vault_provider.dart';
 import 'dart:io';
 
 class SettingsScreen extends StatefulWidget {
@@ -74,7 +74,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     });
 
     try {
-      final notesProvider = context.read<NotesProvider>();
+      final vaultProvider = context.read<VaultProvider>();
       
       // Test if new directory can be created/accessed
       final newDirectory = Directory(_newVaultDirectory!);
@@ -91,7 +91,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       await _settingsService.setVaultDirectory(_newVaultDirectory!);
 
       // Reinitialize the vault with new location
-      await notesProvider.changeVaultDirectory(_newVaultDirectory!);
+      await vaultProvider.changeVaultDirectory(_newVaultDirectory!);
 
       setState(() {
         _currentVaultDirectory = _newVaultDirectory;
@@ -125,7 +125,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('This will move all your notes to the new location.'),
+            const Text('This will change where the app looks for notes.'),
             const SizedBox(height: 16),
             Text('From: $_currentVaultDirectory'),
             const SizedBox(height: 8),
@@ -144,7 +144,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
           ElevatedButton(
             onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Move Vault'),
+            child: const Text('Change Directory'),
           ),
         ],
       ),

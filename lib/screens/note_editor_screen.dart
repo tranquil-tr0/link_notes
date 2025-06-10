@@ -2,7 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../models/note.dart';
-import '../providers/notes_provider.dart';
+import '../providers/vault_provider.dart';
 
 /// NoteEditorScreen provides a full-featured markdown editor for creating and editing notes
 /// 
@@ -13,7 +13,7 @@ import '../providers/notes_provider.dart';
 /// - AppBar with save, delete, and navigation actions
 /// - Markdown toolbar for common formatting operations
 /// - Word count and character count display
-/// - Integration with NotesProvider for note CRUD operations
+/// - Integration with VaultProvider for note CRUD operations
 class NoteEditorScreen extends StatefulWidget {
   final Note? note; // null for new notes, existing note for editing
   final String? initialTitle;
@@ -119,18 +119,18 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
     });
     
     try {
-      final notesProvider = context.read<NotesProvider>();
+      final vaultProvider = context.read<VaultProvider>();
       Note? savedNote;
       
       if (widget.note == null) {
         // Creating new note
-        savedNote = await notesProvider.createNote(
+        savedNote = await vaultProvider.createNote(
           title: title,
           content: content,
         );
       } else {
         // Updating existing note
-        savedNote = await notesProvider.updateNote(
+        savedNote = await vaultProvider.updateNote(
           widget.note!,
           newTitle: title,
           newContent: content,
@@ -170,8 +170,8 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
     if (!confirmed) return;
     
     try {
-      final notesProvider = context.read<NotesProvider>();
-      final success = await notesProvider.deleteNote(widget.note!);
+      final vaultProvider = context.read<VaultProvider>();
+      final success = await vaultProvider.deleteNote(widget.note!);
       
       if (success && mounted) {
         Navigator.of(context).pop();
