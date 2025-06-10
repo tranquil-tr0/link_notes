@@ -109,7 +109,14 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
                   }
 
                   if (!vaultProvider.isInitialized) {
-                    return _buildWelcomeScreen(vaultProvider);
+                    //throw an error
+                    debugPrint('In directory screen, but vault provider is not initialized.');
+                    return Center(
+                      child: Text(
+                        'Vault is not initialized. Try setting up again.',
+                        style: Theme.of(context).textTheme.headlineSmall,
+                      ),
+                    );
                   }
 
                   return _buildMainScreen(vaultProvider);
@@ -192,39 +199,6 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
               },
               icon: const Icon(Icons.refresh),
               label: const Text('Retry'),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildWelcomeScreen(VaultProvider vaultProvider) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(24.0),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(Icons.folder_outlined, size: 80, color: Colors.blue),
-            const SizedBox(height: 24),
-            Text(
-              'Welcome to Link Notes',
-              style: Theme.of(context).textTheme.headlineMedium,
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Your personal knowledge management system',
-              style: Theme.of(context).textTheme.bodyLarge,
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 32),
-            ElevatedButton.icon(
-              onPressed: () {
-                vaultProvider.initialize();
-              },
-              icon: const Icon(Icons.folder_open),
-              label: const Text('Initialize Vault'),
             ),
           ],
         ),
