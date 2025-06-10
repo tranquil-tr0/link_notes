@@ -12,3 +12,4 @@
 - [ ] consider making the change vault location not alter the app's idea of what locations it has access to (persistent permissions in app state to reflect permissions for the OS) or delete app data about permissions and instead query for it every time
 - [ ] show the old folder tree on the side on rightward swipe?
 - [ ] quick settings panel quick note
+- [ ] update versions of all the libraries
