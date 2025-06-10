@@ -127,7 +127,7 @@ class _FolderTreeWidgetState extends State<FolderTreeWidget> {
                             size: 16,
                             color: isCurrentFolder
                                 ? Theme.of(context).colorScheme.onPrimaryContainer
-                                : Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                                : Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
                           ),
                           padding: EdgeInsets.zero,
                           constraints: const BoxConstraints(),
@@ -165,15 +165,15 @@ class _FolderTreeWidgetState extends State<FolderTreeWidget> {
                     padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                     decoration: BoxDecoration(
                       color: isCurrentFolder
-                          ? Theme.of(context).colorScheme.onPrimaryContainer.withOpacity(0.1)
-                          : Theme.of(context).colorScheme.primary.withOpacity(0.1),
+                          ? Theme.of(context).colorScheme.onPrimaryContainer.withValues(alpha: 0.1)
+                          : Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(10),
                     ),
                     child: Text(
                       '${folder.notes.length}',
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
                         color: isCurrentFolder
-                            ? Theme.of(context).colorScheme.onPrimaryContainer.withOpacity(0.7)
+                            ? Theme.of(context).colorScheme.onPrimaryContainer.withValues(alpha: 0.7)
                             : Theme.of(context).colorScheme.primary,
                         fontSize: 10,
                       ),
@@ -231,7 +231,7 @@ class FolderTreeItem extends StatelessWidget {
             ? Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.primary.withOpacity(0.1),
+                  color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Text(

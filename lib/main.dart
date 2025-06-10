@@ -4,6 +4,7 @@ import 'providers/vault_provider.dart';
 import 'screens/directory_screen.dart';
 import 'screens/vault_setup_screen.dart';
 import 'services/settings_service.dart';
+import 'services/markdown_conversion_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -14,9 +15,12 @@ void main() async {
   try {
     // Initialize settings service with error handling
     await SettingsService.instance.initialize();
+    
+    // Initialize markdown conversion service
+    MarkdownConversionService.initialize();
   } catch (e) {
     // Log the error but don't crash the app
-    debugPrint('Warning: Failed to initialize SettingsService: $e');
+    debugPrint('Warning: Failed to initialize services: $e');
     // The app can still function with default settings
   }
   

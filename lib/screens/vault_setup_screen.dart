@@ -175,7 +175,7 @@ class _VaultSetupScreenState extends State<VaultSetupScreen> {
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
         border: Border.all(
-          color: Theme.of(context).colorScheme.outline.withOpacity(0.3),
+          color: Theme.of(context).colorScheme.outline.withValues(alpha: 0.3),
         ),
         borderRadius: BorderRadius.circular(12),
       ),
@@ -196,7 +196,7 @@ class _VaultSetupScreenState extends State<VaultSetupScreen> {
           Text(
             'Choose where you\'d like to store your notes. This will be your vault directory.',
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+              color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
             ),
             textAlign: TextAlign.center,
           ),

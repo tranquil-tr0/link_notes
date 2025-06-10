@@ -222,7 +222,7 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
         color: Theme.of(context).colorScheme.surface,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.1),
+            color: Colors.black.withValues(alpha: 0.1),
             blurRadius: 4,
             offset: const Offset(0, 2),
           ),
@@ -303,7 +303,7 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
                       borderRadius: BorderRadius.circular(16),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withOpacity(0.1),
+                          color: Colors.black.withValues(alpha: 0.1),
                           blurRadius: 8,
                           offset: const Offset(0, 2),
                         ),
@@ -450,7 +450,7 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
                   color: i == segments.length - 1
-                      ? Theme.of(context).colorScheme.primary.withOpacity(0.1)
+                      ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.1)
                       : null,
                   borderRadius: BorderRadius.circular(8),
                 ),
@@ -466,7 +466,7 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
                           ? Theme.of(context).colorScheme.primary
                           : Theme.of(
                               context,
-                            ).colorScheme.onSurface.withOpacity(0.7),
+                            ).colorScheme.onSurface.withValues(alpha: 0.7),
                     ),
                     const SizedBox(width: 4),
                     ConstrainedBox(
@@ -478,7 +478,7 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
                               ? Theme.of(context).colorScheme.primary
                               : Theme.of(
                                   context,
-                                ).colorScheme.onSurface.withOpacity(0.7),
+                                ).colorScheme.onSurface.withValues(alpha: 0.7),
                           fontWeight: i == segments.length - 1
                               ? FontWeight.w600
                               : FontWeight.normal,
@@ -494,7 +494,7 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
               Icon(
                 Icons.chevron_right,
                 size: 16,
-                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5),
+                color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
               ),
           ],
         ],
@@ -654,7 +654,7 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
         border: Border.all(color: Colors.grey.shade300, width: 1),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.1),
+            color: Colors.black.withValues(alpha: 0.1),
             blurRadius: 2,
             offset: const Offset(0, 1),
           ),
@@ -735,7 +735,7 @@ class _DirectoryScreenState extends State<DirectoryScreen> {
             border: Border.all(color: Colors.grey.shade300, width: 1),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.1),
+                color: Colors.black.withValues(alpha: 0.1),
                 blurRadius: 2,
                 offset: const Offset(0, 1),
               ),

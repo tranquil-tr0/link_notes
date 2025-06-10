@@ -222,7 +222,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     Text(
                       PathUtils.getStorageLocationDescription(_currentVaultDirectory),
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                        color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
                         fontStyle: FontStyle.italic,
                       ),
                     ),
@@ -231,7 +231,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       _currentVaultDirectory!,
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
                         fontFamily: 'monospace',
-                        color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5),
+                        color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.5),
                       ),
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -261,7 +261,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ' by the application. You can manually revoke access permissions in App info '
               '> Storage & cache' : ''}',
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
               ),
             ),
           ],

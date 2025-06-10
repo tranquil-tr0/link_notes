@@ -1,5 +1,7 @@
 import 'dart:io';
+import 'package:flutter_quill/quill_delta.dart';
 import 'package:saf_util/saf_util_platform_interface.dart';
+import '../services/markdown_conversion_service.dart';
 import '../utils/path_utils.dart';
 
 class Note {
@@ -9,6 +11,9 @@ class Note {
   final String filePath;
   final DateTime createdAt;
   final DateTime modifiedAt;
+  
+  /// Optional Delta cache for performance
+  Delta? _cachedDelta;
 
   Note({
     required this.id,
@@ -71,7 +76,7 @@ class Note {
       }
     }
 
-    return Note(
+    final note = Note(
       id: id,
       title: title,
       content: noteContent.trim(),
@@ -79,6 +84,11 @@ class Note {
       createdAt: createdAt ?? stat.changed,
       modifiedAt: modifiedAt ?? stat.modified,
     );
+    
+    // Pre-cache Delta for performance
+    note._cachedDelta = MarkdownConversionService.markdownToDelta(note.content);
+    
+    return note;
   }
 
   /// Creates a Note instance from a SafDocumentFile
@@ -129,7 +139,7 @@ class Note {
     // Use current time if metadata is not available
     final now = DateTime.now();
     
-    return Note(
+    final note = Note(
       id: id,
       title: title,
       content: noteContent.trim(),
@@ -137,6 +147,11 @@ class Note {
       createdAt: createdAt ?? now,
       modifiedAt: modifiedAt ?? now,
     );
+    
+    // Pre-cache Delta for performance
+    note._cachedDelta = MarkdownConversionService.markdownToDelta(note.content);
+    
+    return note;
   }
 
   /// Saves the Note to a file
@@ -160,6 +175,28 @@ modified_at: ${modifiedAt.toIso8601String()}
     await file.writeAsString(fullContent);
   }
 
+  /// Get Delta representation for editor (with caching)
+  Delta get deltaContent {
+    _cachedDelta ??= MarkdownConversionService.markdownToDelta(content);
+    return _cachedDelta!;
+  }
+
+  /// Save Note with Delta → Markdown conversion
+  Future<void> toFileFromDelta(Delta delta) async {
+    // Convert Delta back to markdown
+    final markdownContent = MarkdownConversionService.deltaToMarkdown(delta);
+    
+    // Update content and clear cache
+    final updatedNote = copyWith(
+      content: markdownContent,
+      modifiedAt: DateTime.now(),
+    );
+    updatedNote._cachedDelta = null;
+    
+    // Save using existing file infrastructure
+    await updatedNote.toFile();
+  }
+
   /// Creates a copy of this Note with updated fields
   Note copyWith({
     String? id,
@@ -169,7 +206,7 @@ modified_at: ${modifiedAt.toIso8601String()}
     DateTime? createdAt,
     DateTime? modifiedAt,
   }) {
-    return Note(
+    final note = Note(
       id: id ?? this.id,
       title: title ?? this.title,
       content: content ?? this.content,
@@ -177,6 +214,16 @@ modified_at: ${modifiedAt.toIso8601String()}
       createdAt: createdAt ?? this.createdAt,
       modifiedAt: modifiedAt ?? this.modifiedAt,
     );
+    
+    // Clear cache if content changed
+    if (content != null && content != this.content) {
+      note._cachedDelta = null;
+    } else {
+      // Preserve cache if content unchanged
+      note._cachedDelta = _cachedDelta;
+    }
+    
+    return note;
   }
 
   /// Converts Note metadata to JSON (excludes content for efficiency)
