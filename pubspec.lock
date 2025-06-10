@@ -336,6 +336,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "6.1.5"
+  saf_util:
+    dependency: "direct main"
+    description:
+      name: saf_util
+      sha256: b18e57677fc704918b2a67d7b5aa1c9c61dc5f3f2e7e70480576db77d18bec4a
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.10.0"
   shared_preferences:
     dependency: "direct main"
     description:
