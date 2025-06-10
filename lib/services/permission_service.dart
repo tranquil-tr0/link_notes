@@ -152,15 +152,56 @@ class PermissionService {
   }
 
   /// Release SAF permissions and clear stored data
+  /// Note: This only clears the app's internal tracking of permissions.
+  /// The system-level SAF permissions will remain until manually removed by the user.
   Future<void> releasePermissions() async {
     if (kIsWeb || !Platform.isAndroid) return;
 
     try {
       final prefs = await SharedPreferences.getInstance();
+      
+      // Clear local storage - this removes the app's tracking of the permission
       await prefs.remove(_safUriKey);
       await prefs.remove(_hasPermissionKey);
+      debugPrint('Cleared local SAF permission storage');
+      
+      // Note: The actual SAF permission remains in the system and will be visible
+      // in Android Settings > Apps > [Your App] > Permissions > External Storage
+      // Users can manually remove these permissions from there if desired.
+      debugPrint('Note: System-level SAF permission remains active. Users can remove it manually from app settings.');
     } catch (e) {
       debugPrint('Error releasing SAF permissions: $e');
+    }
+  }
+
+  /// Change vault directory with cleanup of old internal references
+  /// Note: This doesn't revoke system-level permissions, only clears internal tracking
+  Future<bool> changeVaultDirectoryWithCleanup() async {
+    if (kIsWeb || !Platform.isAndroid) return true;
+
+    try {
+      // Get current URI before changing (for logging purposes)
+      final oldSafUri = await getVaultSafUri();
+      
+      // Request new directory permission
+      final granted = await requestStoragePermission();
+      if (!granted) {
+        return false;
+      }
+      
+      // Log the change for debugging
+      if (oldSafUri != null) {
+        final newSafUri = await getVaultSafUri();
+        if (newSafUri != null && oldSafUri != newSafUri) {
+          debugPrint('Changed SAF directory from: $oldSafUri to: $newSafUri');
+          debugPrint('Note: Old system-level SAF permission remains active until manually removed by user');
+        }
+      }
+      
+      return true;
+    } catch (e) {
+      debugPrint('Error changing vault directory with cleanup: $e');
+      return false;
     }
   }
 

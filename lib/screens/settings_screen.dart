@@ -42,9 +42,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
       String? newDirectoryPath;
 
       if (Platform.isAndroid) {
-        // Use SAF for Android - immediately apply the new directory
-        final granted = await PermissionService.instance.requestStoragePermission();
-        if (granted) {
+        // Use SAF with proper cleanup for Android
+        final success = await PermissionService.instance.changeVaultDirectoryWithCleanup();
+        if (success) {
           final safUri = await PermissionService.instance.getVaultSafUri();
           if (safUri != null) {
             newDirectoryPath = safUri;
@@ -53,6 +53,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
             final displayPath = PathUtils.safUriToDisplayPath(safUri);
             final description = PathUtils.getStorageLocationDescription(safUri);
             debugPrint('Selected new vault location: $displayPath ($description)');
+            
+            // Inform user about old permissions
+            if (_currentVaultDirectory != null && _currentVaultDirectory != safUri) {
+              debugPrint('Note: Previous directory permissions remain active in system settings');
+            }
           } else {
             setState(() {
               _error = 'Failed to get storage access URI. Please try again.';
@@ -251,7 +256,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
             const SizedBox(height: 8),
             Text(
-              'Select a new location for your vault. Your current notes will not be affected or moved.',
+              'Select a new location for your vault. Your current notes will not be affected or moved.'
+              '${Platform.isAndroid ? ' Access to your current directory cannot be revoked'
+              ' by the application. You can manually revoke access permissions in App info '
+              '> Storage & cache.' : ''}',
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
                 color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
               ),

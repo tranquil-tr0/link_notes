@@ -140,7 +140,7 @@ class VaultProvider extends ChangeNotifier {
     }
   }
   
-  /// Change vault directory
+  /// Change vault directory with proper permission cleanup
   Future<void> changeVaultDirectory(String newPath) async {
     _setLoading(true);
     _clearError();
@@ -148,11 +148,16 @@ class VaultProvider extends ChangeNotifier {
     try {
       // Verify new directory exists
       if (Platform.isAndroid) {
-        // For Android with SAF, verify we have access to the vault URI
-        // First update the SAF URI in PermissionService
-        await PermissionService.instance.setVaultSafUri(newPath);
+        // For Android with SAF, use the cleanup method that properly handles permission tracking
+        final success = await PermissionService.instance.changeVaultDirectoryWithCleanup();
+        if (!success) {
+          throw Exception('Failed to change vault directory. Permission not granted.');
+        }
         
-        // Then verify we can access it
+        // Get the new SAF URI that was set during the permission request
+        newPath = await PermissionService.instance.getVaultSafUri() ?? newPath;
+        
+        // Verify we can access the new directory
         final vaultDirectory = await PermissionService.instance.getVaultDirectory();
         if (vaultDirectory == null) {
           throw Exception('Cannot access vault directory. Please re-select the folder.');
