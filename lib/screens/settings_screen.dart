@@ -74,9 +74,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       }
 
       // Apply the directory change immediately
-      if (newDirectoryPath != null) {
-        await _applyDirectoryChange(newDirectoryPath);
-      }
+      await _applyDirectoryChange(newDirectoryPath);
     } catch (e) {
       setState(() {
         _error = 'Failed to change vault directory: $e';
