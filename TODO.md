@@ -1,5 +1,4 @@
 ## Core (Now)
-- [ ] get rid of all app state (to do with notes)
 - [ ] dynamic markdown editor - implement proper editor
 
 ## Feature (Later)
