@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../providers/notes_provider.dart';
+import '../providers/vault_provider.dart';
 import '../models/note.dart';
 import 'note_editor_screen.dart';
 import 'settings_screen.dart';
@@ -8,12 +8,11 @@ import 'settings_screen.dart';
 /// HomeScreen serves as the main interface for the notes app
 /// 
 /// Features:
-/// - Split layout with folder tree (left) and notes grid (right)
-/// - AppBar with search functionality and vault statistics
-/// - Breadcrumb navigation showing current folder path
+/// - File explorer-like interface showing current directory contents
+/// - Real-time file system reading with no internal data storage
+/// - Breadcrumb navigation for folder traversal
+/// - Search functionality across the vault
 /// - Floating action buttons for creating notes and folders
-/// - Loading states and error handling
-/// - Responsive design for different screen sizes
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
@@ -23,6 +22,9 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   final TextEditingController _searchController = TextEditingController();
+  bool _isSearching = false;
+  List<Note> _searchResults = [];
+  bool _isSearchLoading = false;
   
   @override
   void initState() {
@@ -30,9 +32,9 @@ class _HomeScreenState extends State<HomeScreen> {
     
     // Initialize the vault when the screen loads
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      final notesProvider = context.read<NotesProvider>();
-      if (!notesProvider.isVaultInitialized) {
-        notesProvider.loadVault();
+      final vaultProvider = context.read<VaultProvider>();
+      if (!vaultProvider.isInitialized) {
+        vaultProvider.initialize();
       }
     });
   }
@@ -47,30 +49,30 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       body: SafeArea(
-        child: Consumer<NotesProvider>(
-          builder: (context, notesProvider, child) {
-            if (notesProvider.isInitializing) {
+        child: Consumer<VaultProvider>(
+          builder: (context, vaultProvider, child) {
+            if (!vaultProvider.isInitialized && vaultProvider.isLoading) {
               return _buildInitializingScreen();
             }
 
-            if (notesProvider.error != null) {
-              return _buildErrorScreen(notesProvider);
+            if (vaultProvider.error != null) {
+              return _buildErrorScreen(vaultProvider);
             }
 
-            if (!notesProvider.isVaultInitialized) {
-              return _buildWelcomeScreen(notesProvider);
+            if (!vaultProvider.isInitialized) {
+              return _buildWelcomeScreen(vaultProvider);
             }
 
-            return _buildMainScreen(notesProvider);
+            return _buildMainScreen(vaultProvider);
           },
         ),
       ),
-      floatingActionButton: Consumer<NotesProvider>(
-        builder: (context, notesProvider, child) {
-          if (!notesProvider.isVaultInitialized || notesProvider.isSearching) {
+      floatingActionButton: Consumer<VaultProvider>(
+        builder: (context, vaultProvider, child) {
+          if (!vaultProvider.isInitialized || _isSearching) {
             return const SizedBox.shrink();
           }
-          return _buildFloatingActionButtons(notesProvider);
+          return _buildFloatingActionButtons(vaultProvider);
         },
       ),
     );
@@ -92,7 +94,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildErrorScreen(NotesProvider notesProvider) {
+  Widget _buildErrorScreen(VaultProvider vaultProvider) {
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(24.0),
@@ -111,15 +113,14 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             const SizedBox(height: 8),
             Text(
-              notesProvider.error!,
+              vaultProvider.error!,
               textAlign: TextAlign.center,
               style: Theme.of(context).textTheme.bodyMedium,
             ),
             const SizedBox(height: 24),
             ElevatedButton.icon(
               onPressed: () {
-                debugPrint('Pressed Retry Button');
-                notesProvider.loadVault();
+                vaultProvider.initialize();
               },
               icon: const Icon(Icons.refresh),
               label: const Text('Retry'),
@@ -130,7 +131,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildWelcomeScreen(NotesProvider notesProvider) {
+  Widget _buildWelcomeScreen(VaultProvider vaultProvider) {
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(24.0),
@@ -156,8 +157,7 @@ class _HomeScreenState extends State<HomeScreen> {
             const SizedBox(height: 32),
             ElevatedButton.icon(
               onPressed: () {
-                debugPrint('Pressed Initialize Vault Button');
-                notesProvider.loadVault();
+                vaultProvider.initialize();
               },
               icon: const Icon(Icons.folder_open),
               label: const Text('Initialize Vault'),
@@ -168,17 +168,17 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildMainScreen(NotesProvider notesProvider) {
+  Widget _buildMainScreen(VaultProvider vaultProvider) {
     return Column(
       children: [
-        _buildAppBar(notesProvider),
-        if (notesProvider.isSearching) _buildSearchResultsOverlay(notesProvider)
-        else Expanded(child: _buildMainContent(notesProvider)),
+        _buildAppBar(vaultProvider),
+        if (_isSearching) _buildSearchResultsOverlay()
+        else Expanded(child: _buildMainContent(vaultProvider)),
       ],
     );
   }
 
-  Widget _buildAppBar(NotesProvider notesProvider) {
+  Widget _buildAppBar(VaultProvider vaultProvider) {
     return Container(
       padding: const EdgeInsets.all(16.0),
       decoration: BoxDecoration(
@@ -203,19 +203,17 @@ class _HomeScreenState extends State<HomeScreen> {
                 style: Theme.of(context).textTheme.headlineSmall,
               ),
               const Spacer(),
-              _buildVaultStats(notesProvider),
+              _buildVaultStats(vaultProvider),
               const SizedBox(width: 16),
               IconButton(
                 onPressed: () {
-                  debugPrint('Pressed Refresh Button');
-                  notesProvider.refreshCurrentFolder();
+                  vaultProvider.refresh();
                 },
                 icon: const Icon(Icons.refresh),
                 tooltip: 'Refresh',
               ),
               IconButton(
                 onPressed: () {
-                  debugPrint('Pressed Settings Button');
                   Navigator.of(context).push(
                     MaterialPageRoute(
                       builder: (context) => const SettingsScreen(),
@@ -233,12 +231,12 @@ class _HomeScreenState extends State<HomeScreen> {
             children: [
               Expanded(
                 flex: 2,
-                child: _buildSearchField(notesProvider),
+                child: _buildSearchField(vaultProvider),
               ),
               const SizedBox(width: 16),
               Expanded(
                 flex: 3,
-                child: _buildBreadcrumbs(notesProvider),
+                child: _buildBreadcrumbs(vaultProvider),
               ),
             ],
           ),
@@ -247,35 +245,42 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildVaultStats(NotesProvider notesProvider) {
-    final totalNotes = notesProvider.rootFolder?.totalNoteCount ?? 0;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.primaryContainer,
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Text(
-        '$totalNotes notes',
-        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-          color: Theme.of(context).colorScheme.onPrimaryContainer,
-        ),
-      ),
+  Widget _buildVaultStats(VaultProvider vaultProvider) {
+    return FutureBuilder<Map<String, int>>(
+      future: vaultProvider.getVaultStats(),
+      builder: (context, snapshot) {
+        final totalNotes = snapshot.data?['totalNotes'] ?? 0;
+        return Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.primaryContainer,
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Text(
+            '$totalNotes notes',
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              color: Theme.of(context).colorScheme.onPrimaryContainer,
+            ),
+          ),
+        );
+      },
     );
   }
 
-  Widget _buildSearchField(NotesProvider notesProvider) {
+  Widget _buildSearchField(VaultProvider vaultProvider) {
     return TextField(
       controller: _searchController,
       decoration: InputDecoration(
         hintText: 'Search notes...',
         prefixIcon: const Icon(Icons.search),
-        suffixIcon: notesProvider.isSearching
+        suffixIcon: _isSearching
             ? IconButton(
                 onPressed: () {
-                  debugPrint('Pressed Clear Search Button');
                   _searchController.clear();
-                  notesProvider.clearSearch();
+                  setState(() {
+                    _isSearching = false;
+                    _searchResults = [];
+                  });
                 },
                 icon: const Icon(Icons.clear),
               )
@@ -287,35 +292,58 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
       onChanged: (query) {
         if (query.isNotEmpty) {
-          notesProvider.searchNotes(query);
+          _performSearch(vaultProvider, query);
         } else {
-          notesProvider.clearSearch();
+          setState(() {
+            _isSearching = false;
+            _searchResults = [];
+          });
         }
       },
-      onTap: () {},
-      onSubmitted: (_) {},
     );
   }
 
-  Widget _buildBreadcrumbs(NotesProvider notesProvider) {
-    if (notesProvider.breadcrumbs.isEmpty) {
-      return const SizedBox.shrink();
+  void _performSearch(VaultProvider vaultProvider, String query) async {
+    setState(() {
+      _isSearching = true;
+      _isSearchLoading = true;
+    });
+    
+    try {
+      final results = await vaultProvider.searchNotes(query);
+      setState(() {
+        _searchResults = results;
+        _isSearchLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _searchResults = [];
+        _isSearchLoading = false;
+      });
     }
+  }
 
+  Widget _buildBreadcrumbs(VaultProvider vaultProvider) {
+    final segments = ['Home', ...vaultProvider.pathSegments];
+    
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       child: Row(
         children: [
-          for (int i = 0; i < notesProvider.breadcrumbs.length; i++) ...[
+          for (int i = 0; i < segments.length; i++) ...[
             InkWell(
               onTap: () {
-                debugPrint('Pressed Breadcrumb Folder/Home Button: ${notesProvider.breadcrumbs[i].name}');
-                notesProvider.loadFolder(notesProvider.breadcrumbs[i]);
+                if (i == 0) {
+                  vaultProvider.navigateToRoot();
+                } else {
+                  final path = vaultProvider.pathSegments.take(i).join('/');
+                  vaultProvider.navigateToPath(path);
+                }
               },
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
-                  color: i == notesProvider.breadcrumbs.length - 1
+                  color: i == segments.length - 1
                       ? Theme.of(context).colorScheme.primary.withOpacity(0.1)
                       : null,
                   borderRadius: BorderRadius.circular(8),
@@ -326,18 +354,18 @@ class _HomeScreenState extends State<HomeScreen> {
                     Icon(
                       i == 0 ? Icons.home : Icons.folder,
                       size: 16,
-                      color: i == notesProvider.breadcrumbs.length - 1
+                      color: i == segments.length - 1
                           ? Theme.of(context).colorScheme.primary
                           : Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
                     ),
                     const SizedBox(width: 4),
                     Text(
-                      notesProvider.breadcrumbs[i].name,
+                      segments[i],
                       style: TextStyle(
-                        color: i == notesProvider.breadcrumbs.length - 1
+                        color: i == segments.length - 1
                             ? Theme.of(context).colorScheme.primary
                             : Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
-                        fontWeight: i == notesProvider.breadcrumbs.length - 1
+                        fontWeight: i == segments.length - 1
                             ? FontWeight.w600
                             : FontWeight.normal,
                       ),
@@ -346,7 +374,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ),
             ),
-            if (i < notesProvider.breadcrumbs.length - 1)
+            if (i < segments.length - 1)
               Icon(
                 Icons.chevron_right,
                 size: 16,
@@ -358,7 +386,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildSearchResultsOverlay(NotesProvider notesProvider) {
+  Widget _buildSearchResultsOverlay() {
     return Expanded(
       child: Container(
         margin: const EdgeInsets.all(16),
@@ -379,12 +407,12 @@ class _HomeScreenState extends State<HomeScreen> {
                   const Icon(Icons.search, size: 20),
                   const SizedBox(width: 8),
                   Text(
-                    'Search Results for "${notesProvider.searchQuery}"',
+                    'Search Results for "${_searchController.text}"',
                     style: Theme.of(context).textTheme.titleMedium,
                   ),
                   const Spacer(),
                   Text(
-                    '${notesProvider.searchResults.length} results',
+                    '${_searchResults.length} results',
                     style: Theme.of(context).textTheme.bodySmall,
                   ),
                 ],
@@ -392,9 +420,9 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             const Divider(height: 1),
             Expanded(
-              child: notesProvider.isLoading
+              child: _isSearchLoading
                   ? const Center(child: CircularProgressIndicator())
-                  : notesProvider.searchResults.isEmpty
+                  : _searchResults.isEmpty
                       ? const Center(
                           child: Column(
                             mainAxisAlignment: MainAxisAlignment.center,
@@ -407,10 +435,10 @@ class _HomeScreenState extends State<HomeScreen> {
                         )
                       : ListView.builder(
                           padding: const EdgeInsets.all(16),
-                          itemCount: notesProvider.searchResults.length,
+                          itemCount: _searchResults.length,
                           itemBuilder: (context, index) {
-                            final note = notesProvider.searchResults[index];
-                            return _buildNoteListItem(note, notesProvider);
+                            final note = _searchResults[index];
+                            return _buildNoteListItem(note);
                           },
                         ),
             ),
@@ -420,12 +448,48 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildMainContent(NotesProvider notesProvider) {
-    return _buildNotesPanel(notesProvider);
+  Widget _buildMainContent(VaultProvider vaultProvider) {
+    return FutureBuilder<Map<String, dynamic>>(
+      future: _loadCurrentDirectoryContents(vaultProvider),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        
+        if (snapshot.hasError) {
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(Icons.error, size: 48, color: Colors.red),
+                const SizedBox(height: 16),
+                Text('Error loading directory: ${snapshot.error}'),
+                const SizedBox(height: 16),
+                ElevatedButton(
+                  onPressed: () => vaultProvider.refresh(),
+                  child: const Text('Retry'),
+                ),
+              ],
+            ),
+          );
+        }
+        
+        final data = snapshot.data ?? {};
+        final notes = data['notes'] as List<Note>? ?? [];
+        final folders = data['folders'] as List<String>? ?? [];
+        
+        return _buildDirectoryContents(vaultProvider, notes, folders);
+      },
+    );
   }
 
+  Future<Map<String, dynamic>> _loadCurrentDirectoryContents(VaultProvider vaultProvider) async {
+    final notes = await vaultProvider.getCurrentNotes();
+    final folders = await vaultProvider.getCurrentFolders();
+    return {'notes': notes, 'folders': folders};
+  }
 
-  Widget _buildNotesPanel(NotesProvider notesProvider) {
+  Widget _buildDirectoryContents(VaultProvider vaultProvider, List<Note> notes, List<String> folders) {
     return Container(
       padding: const EdgeInsets.all(16),
       child: Column(
@@ -433,69 +497,77 @@ class _HomeScreenState extends State<HomeScreen> {
         children: [
           Row(
             children: [
-              const Icon(Icons.note, size: 20),
+              const Icon(Icons.folder_open, size: 20),
               const SizedBox(width: 8),
               Text(
-                'Notes in ${notesProvider.currentFolder?.name ?? "Vault"}',
+                vaultProvider.isInRoot ? 'Vault Root' : 'Current Folder',
                 style: Theme.of(context).textTheme.titleMedium,
               ),
               const Spacer(),
               Text(
-                '${notesProvider.notes.length} notes',
+                '${folders.length} folders • ${notes.length} notes',
                 style: Theme.of(context).textTheme.bodySmall,
               ),
             ],
           ),
           const SizedBox(height: 16),
           Expanded(
-            child: notesProvider.isLoading
-                ? const Center(child: CircularProgressIndicator())
-                : notesProvider.notes.isEmpty
-                    ? _buildEmptyNotesState(notesProvider)
-                    : _buildNotesGrid(notesProvider),
+            child: notes.isEmpty && folders.isEmpty
+                ? _buildEmptyDirectoryState(vaultProvider)
+                : _buildDirectoryGrid(vaultProvider, notes, folders),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildEmptyNotesState(NotesProvider notesProvider) {
+  Widget _buildEmptyDirectoryState(VaultProvider vaultProvider) {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const Icon(Icons.note_add, size: 64, color: Colors.grey),
+          const Icon(Icons.folder_open, size: 64, color: Colors.grey),
           const SizedBox(height: 16),
           Text(
-            'No notes in this folder',
+            'Empty Directory',
             style: Theme.of(context).textTheme.headlineSmall,
           ),
           const SizedBox(height: 8),
           Text(
-            'Create your first note to get started',
+            'Create your first note or folder to get started',
             style: Theme.of(context).textTheme.bodyMedium,
           ),
           const SizedBox(height: 24),
-          ElevatedButton.icon(
-            onPressed: () {
-              debugPrint('Pressed Create Note Button (Empty State)');
-              _showCreateNoteDialog(notesProvider);
-            },
-            icon: const Icon(Icons.add),
-            label: const Text('Create Note'),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              ElevatedButton.icon(
+                onPressed: () => _showCreateNoteDialog(vaultProvider),
+                icon: const Icon(Icons.note_add),
+                label: const Text('Create Note'),
+              ),
+              const SizedBox(width: 16),
+              OutlinedButton.icon(
+                onPressed: () => _showCreateFolderDialog(vaultProvider),
+                icon: const Icon(Icons.folder_open),
+                label: const Text('Create Folder'),
+              ),
+            ],
           ),
         ],
       ),
     );
   }
 
-  Widget _buildNotesGrid(NotesProvider notesProvider) {
+  Widget _buildDirectoryGrid(VaultProvider vaultProvider, List<Note> notes, List<String> folders) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        // Calculate grid columns based on screen width
         final screenWidth = constraints.maxWidth;
         final cardWidth = 280.0;
         final crossAxisCount = (screenWidth / cardWidth).floor().clamp(1, 4);
+        
+        // Combine folders and notes for display
+        final allItems = <dynamic>[...folders, ...notes];
         
         return GridView.builder(
           gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
@@ -504,105 +576,88 @@ class _HomeScreenState extends State<HomeScreen> {
             mainAxisSpacing: 16,
             childAspectRatio: 1.2,
           ),
-          itemCount: notesProvider.notes.length,
+          itemCount: allItems.length,
           itemBuilder: (context, index) {
-            final note = notesProvider.notes[index];
-            return _buildNoteCard(note, notesProvider);
+            final item = allItems[index];
+            
+            if (item is String) {
+              // It's a folder
+              return _buildFolderCard(vaultProvider, item);
+            } else if (item is Note) {
+              // It's a note
+              return _buildNoteCard(item);
+            }
+            
+            return const SizedBox.shrink();
           },
         );
       },
     );
   }
 
-  Widget _buildNoteCard(Note note, NotesProvider notesProvider) {
-    final isSelected = notesProvider.selectedNote?.id == note.id;
-    
+  Widget _buildFolderCard(VaultProvider vaultProvider, String folderName) {
     return Card(
-      elevation: isSelected ? 4 : 1,
-      color: isSelected
-          ? Theme.of(context).colorScheme.primaryContainer
-          : Theme.of(context).colorScheme.surface,
       child: InkWell(
-        onTap: () {
-          debugPrint('Pressed Note Card (Tap): ${note.title}');
-          notesProvider.selectNote(note);
-        },
-        onDoubleTap: () {
-          debugPrint('Pressed Note Card (Double Tap): ${note.title}');
-          _navigateToNoteEditor(note);
-        },
         borderRadius: BorderRadius.circular(12),
+        onTap: () {
+          vaultProvider.navigateToSubfolder(folderName);
+        },
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Note title
-              Text(
-                note.title,
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  color: isSelected
-                      ? Theme.of(context).colorScheme.onPrimaryContainer
-                      : null,
-                ),
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-              ),
-              const SizedBox(height: 8),
-              // Note preview
-              Expanded(
-                child: Text(
-                  note.content,
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: isSelected
-                        ? Theme.of(context).colorScheme.onPrimaryContainer.withOpacity(0.7)
-                        : Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
-                  ),
-                  maxLines: 5,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-              const SizedBox(height: 8),
-              // Note metadata
               Row(
                 children: [
                   Icon(
-                    Icons.access_time,
-                    size: 12,
-                    color: isSelected
-                        ? Theme.of(context).colorScheme.onPrimaryContainer.withOpacity(0.5)
-                        : Theme.of(context).colorScheme.onSurface.withOpacity(0.5),
+                    Icons.folder,
+                    size: 24,
+                    color: Theme.of(context).colorScheme.primary,
                   ),
-                  const SizedBox(width: 4),
-                  Expanded(
-                    child: Text(
-                      _formatDate(note.modifiedAt),
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: isSelected
-                            ? Theme.of(context).colorScheme.onPrimaryContainer.withOpacity(0.5)
-                            : Theme.of(context).colorScheme.onSurface.withOpacity(0.5),
-                        fontSize: 10,
-                      ),
-                    ),
-                  ),
+                  const Spacer(),
                   PopupMenuButton<String>(
-                    icon: Icon(
-                      Icons.more_vert,
-                      size: 16,
-                      color: isSelected
-                          ? Theme.of(context).colorScheme.onPrimaryContainer.withOpacity(0.5)
-                          : Theme.of(context).colorScheme.onSurface.withOpacity(0.5),
-                    ),
-                    onSelected: (action) {
-                      debugPrint('Selected Note Card Popup Menu Action: $action for note ${note.title}');
-                      _handleNoteAction(action, note, notesProvider);
+                    onSelected: (value) {
+                      if (value == 'delete') {
+                        _showDeleteFolderDialog(vaultProvider, folderName);
+                      }
                     },
                     itemBuilder: (context) => [
-                      const PopupMenuItem(value: 'edit', child: Text('Edit')),
-                      const PopupMenuItem(value: 'delete', child: Text('Delete')),
+                      const PopupMenuItem(
+                        value: 'delete',
+                        child: Row(
+                          children: [
+                            Icon(Icons.delete, size: 18),
+                            SizedBox(width: 8),
+                            Text('Delete'),
+                          ],
+                        ),
+                      ),
                     ],
                   ),
                 ],
+              ),
+              const SizedBox(height: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      folderName,
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Folder',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ],
           ),
@@ -611,12 +666,118 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildNoteListItem(Note note, NotesProvider notesProvider) {
+  Widget _buildNoteCard(Note note) {
+    return Card(
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: () {
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (context) => NoteEditorScreen(note: note),
+            ),
+          );
+        },
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(
+                    Icons.note,
+                    size: 20,
+                    color: Theme.of(context).colorScheme.secondary,
+                  ),
+                  const Spacer(),
+                  PopupMenuButton<String>(
+                    onSelected: (value) {
+                      if (value == 'edit') {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (context) => NoteEditorScreen(note: note),
+                          ),
+                        );
+                      } else if (value == 'delete') {
+                        _showDeleteNoteDialog(note);
+                      }
+                    },
+                    itemBuilder: (context) => [
+                      const PopupMenuItem(
+                        value: 'edit',
+                        child: Row(
+                          children: [
+                            Icon(Icons.edit, size: 18),
+                            SizedBox(width: 8),
+                            Text('Edit'),
+                          ],
+                        ),
+                      ),
+                      const PopupMenuItem(
+                        value: 'delete',
+                        child: Row(
+                          children: [
+                            Icon(Icons.delete, size: 18),
+                            SizedBox(width: 8),
+                            Text('Delete'),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      note.title,
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 8),
+                    Expanded(
+                      child: Text(
+                        note.content,
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
+                        ),
+                        maxLines: 3,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Modified ${_formatDate(note.modifiedAt)}',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildNoteListItem(Note note) {
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
       child: ListTile(
         leading: const Icon(Icons.note),
-        title: Text(note.title),
+        title: Text(
+          note.title,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
         subtitle: Text(
           note.content,
           maxLines: 2,
@@ -627,210 +788,100 @@ class _HomeScreenState extends State<HomeScreen> {
           style: Theme.of(context).textTheme.bodySmall,
         ),
         onTap: () {
-          debugPrint('Pressed Note List Item: ${note.title}');
-          notesProvider.selectNote(note);
-        },
-        onLongPress: () {
-          debugPrint('Long Pressed Note List Item: ${note.title}');
-          // TODO: Show note options
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (context) => NoteEditorScreen(note: note),
+            ),
+          );
         },
       ),
     );
   }
 
-  Widget _buildFloatingActionButtons(NotesProvider notesProvider) {
+  Widget _buildFloatingActionButtons(VaultProvider vaultProvider) {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
         FloatingActionButton(
-          onPressed: () {
-            debugPrint('Pressed Floating Action Button: Create Folder');
-            _showCreateFolderDialog(notesProvider);
-          },
-          heroTag: "folder",
-          backgroundColor: Theme.of(context).colorScheme.secondaryContainer,
-          foregroundColor: Theme.of(context).colorScheme.onSecondaryContainer,
+          heroTag: "create_folder",
+          onPressed: () => _showCreateFolderDialog(vaultProvider),
+          tooltip: 'Create Folder',
           child: const Icon(Icons.folder_open),
         ),
         const SizedBox(height: 16),
         FloatingActionButton(
-          onPressed: () {
-            debugPrint('Pressed Floating Action Button: Create Note');
-            _createNewNote();
-          },
-          heroTag: "note",
+          heroTag: "create_note",
+          onPressed: () => _showCreateNoteDialog(vaultProvider),
+          tooltip: 'Create Note',
           child: const Icon(Icons.add),
         ),
       ],
     );
   }
 
-  String _formatDate(DateTime date) {
-    final now = DateTime.now();
-    final difference = now.difference(date);
-    
-    if (difference.inDays == 0) {
-      return 'Today';
-    } else if (difference.inDays == 1) {
-      return 'Yesterday';
-    } else if (difference.inDays < 7) {
-      return '${difference.inDays} days ago';
-    } else {
-      return '${date.day}/${date.month}/${date.year}';
-    }
-  }
-
-  void _handleNoteAction(String action, Note note, NotesProvider notesProvider) {
-    switch (action) {
-      case 'edit':
-        _navigateToNoteEditor(note);
-        break;
-      case 'delete':
-        _showDeleteNoteDialog(note, notesProvider);
-        break;
-    }
-  }
-
-  void _showCreateNoteDialog(NotesProvider notesProvider) {
-    final titleController = TextEditingController();
-    
+  void _showCreateNoteDialog(VaultProvider vaultProvider) {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Create New Note'),
-        content: TextField(
-          controller: titleController,
-          decoration: const InputDecoration(
-            labelText: 'Note Title',
-            hintText: 'Enter note title...',
-          ),
-          autofocus: true,
-        ),
-        actions: [
-          TextButton(
-            onPressed: () {
-              debugPrint('Pressed Create New Note Dialog: Cancel Button');
-              Navigator.of(context).pop();
-            },
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              debugPrint('Pressed Create New Note Dialog: Create Button');
-              if (titleController.text.isNotEmpty) {
-                final title = titleController.text;
-                Navigator.of(context).pop();
-                Navigator.of(context).push(
-                  MaterialPageRoute(
-                    builder: (context) => NoteEditorScreen(
-                      initialTitle: title,
-                      initialContent: '',
-                    ),
-                  ),
-                );
-              }
-            },
-            child: const Text('Create'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showCreateFolderDialog(NotesProvider notesProvider) {
-    final nameController = TextEditingController();
-    
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Create New Folder'),
-        content: TextField(
-          controller: nameController,
-          decoration: const InputDecoration(
-            labelText: 'Folder Name',
-            hintText: 'Enter folder name...',
-          ),
-          autofocus: true,
-        ),
-        actions: [
-          TextButton(
-            onPressed: () {
-              debugPrint('Pressed Create New Folder Dialog: Cancel Button');
-              Navigator.of(context).pop();
-            },
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              debugPrint('Pressed Create New Folder Dialog: Create Button');
-              if (nameController.text.isNotEmpty) {
-                await notesProvider.createFolder(nameController.text);
-                if (mounted) Navigator.of(context).pop();
-              }
-            },
-            child: const Text('Create'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showDeleteNoteDialog(Note note, NotesProvider notesProvider) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Delete Note'),
-        content: Text('Are you sure you want to delete "${note.title}"?'),
-        actions: [
-          TextButton(
-            onPressed: () {
-              debugPrint('Pressed Delete Note Dialog: Cancel Button');
-              Navigator.of(context).pop();
-            },
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              debugPrint('Pressed Delete Note Dialog: Delete Button for note ${note.title}');
-              await notesProvider.deleteNote(note);
-              if (mounted) Navigator.of(context).pop();
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red,
-              foregroundColor: Colors.white,
+      builder: (context) {
+        final titleController = TextEditingController();
+        return AlertDialog(
+          title: const Text('Create New Note'),
+          content: TextField(
+            controller: titleController,
+            decoration: const InputDecoration(
+              labelText: 'Note Title',
+              hintText: 'Enter note title',
             ),
-            child: const Text('Delete'),
+            autofocus: true,
           ),
-        ],
-      ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                final title = titleController.text.trim();
+                if (title.isNotEmpty) {
+                  Navigator.of(context).pop();
+                  final note = await vaultProvider.createNote(title: title);
+                  if (note != null && mounted) {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (context) => NoteEditorScreen(note: note),
+                      ),
+                    );
+                  }
+                }
+              },
+              child: const Text('Create'),
+            ),
+          ],
+        );
+      },
     );
   }
 
-  void _navigateToNoteEditor(Note? note) async {
-    final result = await Navigator.of(context).push<bool>(
-      MaterialPageRoute(
-        builder: (context) => NoteEditorScreen(note: note),
-      ),
-    );
-    
-    // Refresh the current folder after returning from editor
-    if (result != null && mounted) {
-      final notesProvider = context.read<NotesProvider>();
-      notesProvider.refreshCurrentFolder();
-    }
-  }
-
-  void _createNewNote() async {
-    final result = await Navigator.of(context).push<bool>(
-      MaterialPageRoute(
-        builder: (context) => const NoteEditorScreen(),
-      ),
-    );
-    
-    // Refresh the current folder after returning from editor
-    if (result != null && mounted) {
-      final notesProvider = context.read<NotesProvider>();
-      notesProvider.refreshCurrentFolder();
-    }
-  }
-}
+  void _showCreateFolderDialog(VaultProvider vaultProvider) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        final nameController = TextEditingController();
+        return AlertDialog(
+          title: const Text('Create New Folder'),
+          content: TextField(
+            controller: nameController,
+            decoration: const InputDecoration(
+              labelText: 'Folder Name',
+              hintText: 'Enter folder name',
+            ),
+            autofocus: true,
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                final name = nameController.text.trim();

@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'providers/notes_provider.dart';
+import 'providers/vault_provider.dart';
 import 'screens/home_screen.dart';
 import 'screens/vault_setup_screen.dart';
 import 'services/settings_service.dart';
-import 'services/file_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -30,7 +29,7 @@ class LinkNotesApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ChangeNotifierProvider(
-      create: (context) => NotesProvider(),
+      create: (context) => VaultProvider(),
       child: MaterialApp(
         title: 'Link Notes',
         debugShowCheckedModeBanner: false,
@@ -116,9 +115,9 @@ class _AppRouterState extends State<AppRouter> {
 
   void _checkSetupStatus() async {
     try {
-      final fileService = FileService.instance;
-      final isFirstLaunch = fileService.isFirstLaunch();
-      final hasVaultDirectory = fileService.hasVaultDirectoryConfigured();
+      await SettingsService.instance.initialize();
+      final isFirstLaunch = SettingsService.instance.isFirstLaunch();
+      final hasVaultDirectory = SettingsService.instance.hasVaultDirectory();
       
       setState(() {
         _isFirstLaunch = isFirstLaunch || !hasVaultDirectory;
