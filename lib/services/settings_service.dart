@@ -49,10 +49,10 @@ class SettingsService {
         return;
       } catch (e) {
         retryCount++;
-        print('SharedPreferences initialization attempt $retryCount failed: $e');
+        debugPrint('SharedPreferences initialization attempt $retryCount failed: $e');
         
         if (retryCount >= maxRetries) {
-          print('SharedPreferences initialization failed permanently. Using fallback storage.');
+          debugPrint('SharedPreferences initialization failed permanently. Using fallback storage.');
           _initialized = true; // Mark as initialized but with fallback
           _initializationFailed = true;
           return;
@@ -80,7 +80,7 @@ class SettingsService {
       }
       _fallbackStorage.clear();
     } catch (e) {
-      print('Failed to migrate fallback data: $e');
+      debugPrint('Failed to migrate fallback data: $e');
     }
   }
 
@@ -120,7 +120,7 @@ class SettingsService {
     try {
       return await _prefs!.setString(_vaultDirectoryKey, path);
     } catch (e) {
-      print('Failed to save vault directory to SharedPreferences, using fallback: $e');
+      debugPrint('Failed to save vault directory to SharedPreferences, using fallback: $e');
       _fallbackStorage[_vaultDirectoryKey] = path;
       return true;
     }
@@ -149,7 +149,7 @@ class SettingsService {
     try {
       return await _prefs!.setBool(_isFirstLaunchKey, false);
     } catch (e) {
-      print('Failed to save first launch status to SharedPreferences, using fallback: $e');
+      debugPrint('Failed to save first launch status to SharedPreferences, using fallback: $e');
       _fallbackStorage[_isFirstLaunchKey] = false;
       return true;
     }
@@ -169,7 +169,7 @@ class SettingsService {
       _fallbackStorage.clear(); // Clear fallback too
       return success;
     } catch (e) {
-      print('Failed to clear SharedPreferences, clearing fallback only: $e');
+      debugPrint('Failed to clear SharedPreferences, clearing fallback only: $e');
       _fallbackStorage.clear();
       return true;
     }

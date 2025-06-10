@@ -68,7 +68,7 @@ class VaultProvider extends ChangeNotifier {
   
   /// Initialize the vault provider
   Future<void> initialize() async {
-    print('Initializing VaultProvider...');
+    debugPrint('Initializing VaultProvider...');
     if (_initialized) return;
     
     _setLoading(true);
