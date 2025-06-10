@@ -576,15 +576,46 @@ class VaultProvider extends ChangeNotifier {
     if (!_initialized || _vaultDirectory == null) return false;
     
     try {
-      final folderPath = '$currentFullPath/$folderName';
-      final directory = Directory(folderPath);
+      bool folderExists = false;
       
-      if (await directory.exists()) {
-        _setError('Folder already exists: $folderName');
-        return false;
+      if (Platform.isAndroid) {
+        // Use SAF for Android
+        if (_currentPath.isEmpty) {
+          // Creating in root directory
+          final existingChild = await PermissionService.instance.getChild(folderName);
+          folderExists = existingChild != null && existingChild.isDir;
+        } else {
+          // Creating in subdirectory
+          final pathParts = [..._currentPath.split('/'), folderName];
+          final existingChild = await PermissionService.instance.getChildByPath(pathParts);
+          folderExists = existingChild != null && existingChild.isDir;
+        }
+        
+        if (folderExists) {
+          _setError('Folder already exists: $folderName');
+          return false;
+        }
+        
+        // Create the folder using SAF
+        final pathParts = _currentPath.isEmpty ? [folderName] : [..._currentPath.split('/'), folderName];
+        final createdFolder = await PermissionService.instance.createDirectories(pathParts);
+        
+        if (createdFolder == null) {
+          throw Exception('Failed to create folder using SAF');
+        }
+      } else {
+        // Use traditional file system for other platforms
+        final folderPath = '$currentFullPath/$folderName';
+        final directory = Directory(folderPath);
+        
+        if (await directory.exists()) {
+          _setError('Folder already exists: $folderName');
+          return false;
+        }
+        
+        await directory.create();
       }
       
-      await directory.create();
       notifyListeners(); // Refresh UI
       return true;
     } catch (e) {
@@ -598,15 +629,39 @@ class VaultProvider extends ChangeNotifier {
     if (!_initialized || _vaultDirectory == null) return false;
     
     try {
-      final folderPath = '$currentFullPath/$folderName';
-      final directory = Directory(folderPath);
-      
-      if (await directory.exists()) {
-        await directory.delete(recursive: true);
-        notifyListeners(); // Refresh UI
-        return true;
+      if (Platform.isAndroid) {
+        // Use SAF for Android
+        SafDocumentFile? folderToDelete;
+        
+        if (_currentPath.isEmpty) {
+          // Deleting from root directory
+          folderToDelete = await PermissionService.instance.getChild(folderName);
+        } else {
+          // Deleting from subdirectory
+          final pathParts = [..._currentPath.split('/'), folderName];
+          folderToDelete = await PermissionService.instance.getChildByPath(pathParts);
+        }
+        
+        if (folderToDelete != null && folderToDelete.isDir) {
+          final success = await PermissionService.instance.deleteSafFile(folderToDelete);
+          if (success) {
+            notifyListeners(); // Refresh UI
+          }
+          return success;
+        }
+        return false;
+      } else {
+        // Use traditional file system for other platforms
+        final folderPath = '$currentFullPath/$folderName';
+        final directory = Directory(folderPath);
+        
+        if (await directory.exists()) {
+          await directory.delete(recursive: true);
+          notifyListeners(); // Refresh UI
+          return true;
+        }
+        return false;
       }
-      return false;
     } catch (e) {
       _setError('Failed to delete folder: $e');
       return false;

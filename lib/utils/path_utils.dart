@@ -1,5 +1,3 @@
-import 'dart:io';
-
 /// Utility class for converting SAF (Storage Access Framework) URIs to human-readable paths
 /// and handling path operations across different platforms.
 ///
@@ -187,12 +185,13 @@ class PathUtils {
   static List<String> getBreadcrumbSegments(String? basePath, String? currentPath) {
     if (basePath == null || basePath.isEmpty) return ['Home'];
     
-    final List<String> segments = ['Home'];
+    final List<String> segments = [];
     
     // Add base path segment
     final baseDisplayName = safUriToDisplayPath(basePath);
     if (baseDisplayName != 'Unknown Location' && baseDisplayName.isNotEmpty) {
       // For the root vault, use a friendly name
+      // TODO: consider configurable to display the name or "Vault"
       segments.add(_getVaultRootName(baseDisplayName));
     }
     

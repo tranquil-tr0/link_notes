@@ -207,7 +207,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    PathUtils.safUriToDisplayPath(_currentVaultDirectory) ?? 'Not set',
+                    PathUtils.safUriToDisplayPath(_currentVaultDirectory),
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                       fontWeight: FontWeight.w500,
                     ),

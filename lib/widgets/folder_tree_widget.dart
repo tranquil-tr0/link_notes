@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import '../models/folder.dart';
-import '../utils/path_utils.dart';
 
 /// A widget that displays a hierarchical tree of folders
 /// 
