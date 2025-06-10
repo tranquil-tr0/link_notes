@@ -4,6 +4,8 @@ import 'providers/vault_provider.dart';
 import 'screens/directory_screen.dart';
 import 'screens/vault_setup_screen.dart';
 import 'services/settings_service.dart';
+import 'services/permission_service.dart';
+import 'widgets/permission_request_widget.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -106,6 +108,7 @@ class AppRouter extends StatefulWidget {
 class _AppRouterState extends State<AppRouter> {
   bool _isFirstLaunch = true;
   bool _isCheckingSetup = true;
+  bool _hasPermissions = false;
 
   @override
   void initState() {
@@ -119,13 +122,19 @@ class _AppRouterState extends State<AppRouter> {
       final isFirstLaunch = SettingsService.instance.isFirstLaunch();
       final hasVaultDirectory = SettingsService.instance.hasVaultDirectory();
       
+      // Check permissions
+      final permissionService = PermissionService.instance;
+      final hasPermissions = await permissionService.hasStoragePermission();
+      
       setState(() {
         _isFirstLaunch = isFirstLaunch || !hasVaultDirectory;
+        _hasPermissions = hasPermissions;
         _isCheckingSetup = false;
       });
     } catch (e) {
       setState(() {
         _isFirstLaunch = true;
+        _hasPermissions = false;
         _isCheckingSetup = false;
       });
     }
@@ -137,12 +146,34 @@ class _AppRouterState extends State<AppRouter> {
     });
   }
 
+  void _onPermissionGranted() {
+    setState(() {
+      _hasPermissions = true;
+    });
+  }
+
+  void _onPermissionDenied() {
+    setState(() {
+      _hasPermissions = false;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_isCheckingSetup) {
       return const Scaffold(
         body: Center(
           child: CircularProgressIndicator(),
+        ),
+      );
+    }
+
+    // Check permissions first, regardless of setup status
+    if (!_hasPermissions) {
+      return Scaffold(
+        body: PermissionRequestWidget(
+          onPermissionGranted: _onPermissionGranted,
+          onPermissionDenied: _onPermissionDenied,
         ),
       );
     }

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:path_provider/path_provider.dart';
 import '../services/settings_service.dart';
+import '../services/permission_service.dart';
 import 'dart:io';
 
 class VaultSetupScreen extends StatefulWidget {
@@ -24,12 +26,38 @@ class _VaultSetupScreenState extends State<VaultSetupScreen> {
     _setDefaultDirectory();
   }
 
-  /// Set the default directory to emulated Documents/LinkNotesVault
+  /// Set the default directory using path_provider for cross-platform support
   Future<void> _setDefaultDirectory() async {
     try {
-      // Use emulated storage Documents directory instead of app-specific directory
-      // TODO: see if it is possible to make this work for iOS, since I think this path will break iOS
-      const defaultPath = '/storage/emulated/0/Documents/Link Notes';
+      String defaultPath;
+      
+      if (Platform.isAndroid) {
+        // For Android, try to use external storage documents directory
+        try {
+          final directory = await getExternalStorageDirectory();
+          if (directory != null) {
+            // Use Downloads/Link Notes for better user access
+            defaultPath = '/storage/emulated/0/Download/Link Notes';
+          } else {
+            // Fallback to app documents directory
+            final appDir = await getApplicationDocumentsDirectory();
+            defaultPath = '${appDir.path}/Link Notes';
+          }
+        } catch (e) {
+          // Fallback to app documents directory
+          final appDir = await getApplicationDocumentsDirectory();
+          defaultPath = '${appDir.path}/Link Notes';
+        }
+      } else if (Platform.isIOS) {
+        // For iOS, use documents directory
+        final directory = await getApplicationDocumentsDirectory();
+        defaultPath = '${directory.path}/Link Notes';
+      } else {
+        // For other platforms, use documents directory
+        final directory = await getApplicationDocumentsDirectory();
+        defaultPath = '${directory.path}/Link Notes';
+      }
+      
       setState(() {
         _selectedDirectory = defaultPath;
       });
@@ -48,14 +76,21 @@ class _VaultSetupScreenState extends State<VaultSetupScreen> {
         _error = null;
       });
 
+      String? initialDirectory;
+      if (Platform.isAndroid) {
+        initialDirectory = '/storage/emulated/0';
+      } else if (Platform.isIOS) {
+        final docDir = await getApplicationDocumentsDirectory();
+        initialDirectory = docDir.path;
+      }
+
       final result = await FilePicker.platform.getDirectoryPath(
         dialogTitle: 'Select Vault Directory',
         lockParentWindow: true,
-        initialDirectory: '/storage/emulated',
+        initialDirectory: initialDirectory,
       );
 
       if (result != null) {
-        // Create LinkNotesVault subdirectory in selected path
         setState(() {
           _selectedDirectory = result;
         });
@@ -86,6 +121,41 @@ class _VaultSetupScreenState extends State<VaultSetupScreen> {
     });
 
     try {
+      // Request storage permissions first
+      final permissionService = PermissionService.instance;
+      bool hasPermission = await permissionService.hasStoragePermission();
+      
+      if (!hasPermission) {
+        // Show rationale if needed
+        if (await permissionService.shouldShowPermissionRationale()) {
+          setState(() {
+            _error = permissionService.getPermissionRequirementsMessage();
+          });
+          
+          // Wait a moment for user to read the message
+          await Future.delayed(const Duration(seconds: 2));
+        }
+        
+        // Request permissions
+        hasPermission = await permissionService.requestStoragePermission();
+        
+        if (!hasPermission) {
+          // Check if permanently denied
+          final isPermanentlyDenied = await permissionService.isPermissionPermanentlyDenied();
+          if (isPermanentlyDenied) {
+            setState(() {
+              _error = 'Storage permissions are permanently denied. Please enable them in Settings > Apps > Link Notes > Permissions';
+            });
+            return;
+          } else {
+            setState(() {
+              _error = 'Storage permissions are required to access your notes. Please grant permission and try again.';
+            });
+            return;
+          }
+        }
+      }
+
       // Test if directory can be created/accessed
       final directory = Directory(_selectedDirectory!);
       if (!await directory.exists()) {

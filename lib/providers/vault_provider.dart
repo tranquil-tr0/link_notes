@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import '../models/note.dart';
 import '../services/settings_service.dart';
+import '../services/permission_service.dart';
 
 /// Vault provider that reads notes and folders directly from the file system
 /// 
@@ -61,6 +62,25 @@ class VaultProvider extends ChangeNotifier {
     _clearError();
     
     try {
+      // Check storage permissions first
+      final permissionService = PermissionService.instance;
+      bool hasPermission = await permissionService.hasStoragePermission();
+      
+      if (!hasPermission) {
+        // Request permissions
+        hasPermission = await permissionService.requestStoragePermission();
+        
+        if (!hasPermission) {
+          // Check if permanently denied
+          final isPermanentlyDenied = await permissionService.isPermissionPermanentlyDenied();
+          if (isPermanentlyDenied) {
+            throw Exception('Storage permissions are permanently denied. Please enable them in Settings > Apps > Link Notes > Permissions');
+          } else {
+            throw Exception('Storage permissions are required to access your notes');
+          }
+        }
+      }
+      
       // Get vault directory from settings
       await SettingsService.instance.initialize();
       _vaultDirectory = SettingsService.instance.getVaultDirectory();
@@ -174,6 +194,15 @@ class VaultProvider extends ChangeNotifier {
     if (!_initialized || _vaultDirectory == null) return [];
     
     try {
+      // Check permissions before attempting to read files
+      final permissionService = PermissionService.instance;
+      final hasPermission = await permissionService.hasStoragePermission();
+      
+      if (!hasPermission) {
+        debugPrint('Storage permission denied - cannot read notes');
+        throw Exception('Storage permission required to read notes');
+      }
+      
       final directory = Directory(currentFullPath);
       if (!await directory.exists()) return [];
       
