@@ -52,24 +52,40 @@ class _VaultSetupScreenState extends State<VaultSetupScreen> {
         _error = null;
       });
 
-      String? initialDirectory;
       if (Platform.isAndroid) {
-        initialDirectory = '/storage/emulated/0';
-      } else if (Platform.isIOS) {
-        final docDir = await getApplicationDocumentsDirectory();
-        initialDirectory = docDir.path;
-      }
+        // Use SAF for Android
+        final granted = await PermissionService.instance.requestStoragePermission();
+        if (granted) {
+          final safUri = await PermissionService.instance.getVaultSafUri();
+          if (safUri != null) {
+            setState(() {
+              _selectedDirectory = 'SAF Directory: $safUri';
+            });
+          }
+        } else {
+          setState(() {
+            _error = 'Storage access permission is required to select a vault directory';
+          });
+        }
+      } else {
+        // Use traditional file picker for other platforms
+        String? initialDirectory;
+        if (Platform.isIOS) {
+          final docDir = await getApplicationDocumentsDirectory();
+          initialDirectory = docDir.path;
+        }
 
-      final result = await FilePicker.platform.getDirectoryPath(
-        dialogTitle: 'Select Vault Directory',
-        lockParentWindow: true,
-        initialDirectory: initialDirectory,
-      );
+        final result = await FilePicker.platform.getDirectoryPath(
+          dialogTitle: 'Select Vault Directory',
+          lockParentWindow: true,
+          initialDirectory: initialDirectory,
+        );
 
-      if (result != null) {
-        setState(() {
-          _selectedDirectory = result;
-        });
+        if (result != null) {
+          setState(() {
+            _selectedDirectory = result;
+          });
+        }
       }
     } catch (e) {
       setState(() {
@@ -97,21 +113,42 @@ class _VaultSetupScreenState extends State<VaultSetupScreen> {
     });
 
     try {
-      // Request storage permissions first
+      if (Platform.isAndroid) {
+        // For Android with SAF, ensure we have permissions
+        final hasPermission = await PermissionService.instance.hasStoragePermission();
+        if (!hasPermission) {
+          setState(() {
+            _error = 'Storage access permission is required. Please select a directory first.';
+          });
+          return;
+        }
 
-      // Test if directory can be created/accessed
-      final directory = Directory(_selectedDirectory!);
-      if (!await directory.exists()) {
-        await directory.create(recursive: true);
+        // Get the SAF URI and save it
+        final safUri = await PermissionService.instance.getVaultSafUri();
+        if (safUri != null) {
+          await _settingsService.setVaultDirectory(safUri);
+        } else {
+          setState(() {
+            _error = 'Failed to get storage access URI. Please try selecting the directory again.';
+          });
+          return;
+        }
+      } else {
+        // For other platforms, use traditional file system
+        final directory = Directory(_selectedDirectory!);
+        if (!await directory.exists()) {
+          await directory.create(recursive: true);
+        }
+
+        // Test write permissions by creating a temporary file
+        final testFile = File('${_selectedDirectory!}/.test_write');
+        await testFile.writeAsString('test');
+        await testFile.delete();
+
+        // Save the directory to settings
+        await _settingsService.setVaultDirectory(_selectedDirectory!);
       }
 
-      // Test write permissions by creating a temporary file
-      final testFile = File('${_selectedDirectory!}/.test_write');
-      await testFile.writeAsString('test');
-      await testFile.delete();
-
-      // Save the directory to settings
-      await _settingsService.setVaultDirectory(_selectedDirectory!);
       await _settingsService.setFirstLaunchCompleted();
 
       // Notify completion

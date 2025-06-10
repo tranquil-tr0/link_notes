@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:saf_util/saf_util_platform_interface.dart';
 
 class Note {
   final String id;
@@ -76,6 +77,64 @@ class Note {
       filePath: filePath,
       createdAt: createdAt ?? stat.changed,
       modifiedAt: modifiedAt ?? stat.modified,
+    );
+  }
+
+  /// Creates a Note instance from a SafDocumentFile
+  static Note fromSafFile(SafDocumentFile safFile, String content) {
+    final fileName = safFile.name.replaceAll('.md', '');
+    
+    // Extract metadata from the beginning of the file if it exists
+    String noteContent = content;
+    String title = fileName;
+    String id = fileName;
+    DateTime? createdAt;
+    DateTime? modifiedAt;
+
+    // Check for YAML frontmatter
+    if (content.startsWith('---\n')) {
+      final endIndex = content.indexOf('\n---\n', 4);
+      if (endIndex != -1) {
+        final frontmatter = content.substring(4, endIndex);
+        noteContent = content.substring(endIndex + 5);
+        
+        // Parse YAML-like metadata
+        final lines = frontmatter.split('\n');
+        for (final line in lines) {
+          if (line.contains(':')) {
+            final parts = line.split(':');
+            final key = parts[0].trim();
+            final value = parts.sublist(1).join(':').trim();
+            
+            switch (key) {
+              case 'id':
+                id = value;
+                break;
+              case 'title':
+                title = value;
+                break;
+              case 'created_at':
+                createdAt = DateTime.tryParse(value);
+                break;
+              case 'modified_at':
+                modifiedAt = DateTime.tryParse(value);
+                break;
+            }
+          }
+        }
+      }
+    }
+
+    // Use current time if metadata is not available
+    final now = DateTime.now();
+    
+    return Note(
+      id: id,
+      title: title,
+      content: noteContent.trim(),
+      filePath: safFile.uri, // Use URI as file path for SAF files
+      createdAt: createdAt ?? now,
+      modifiedAt: modifiedAt ?? now,
     );
   }
 

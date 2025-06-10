@@ -1,5 +1,7 @@
 import 'dart:io';
 import 'package:flutter/foundation.dart';
+import 'package:saf_util/saf_util.dart';
+import 'package:saf_util/saf_util_platform_interface.dart';
 import '../models/note.dart';
 import '../services/settings_service.dart';
 import '../services/permission_service.dart';
@@ -62,7 +64,14 @@ class VaultProvider extends ChangeNotifier {
     _clearError();
     
     try {
-      // Check storage permissions first      
+      // Check storage permissions first
+      if (Platform.isAndroid) {
+        final hasPermission = await PermissionService.instance.hasStoragePermission();
+        if (!hasPermission) {
+          throw Exception('Storage permissions required. Please grant access to continue.');
+        }
+      }
+      
       // Get vault directory from settings
       await SettingsService.instance.initialize();
       _vaultDirectory = SettingsService.instance.getVaultDirectory();
@@ -71,10 +80,18 @@ class VaultProvider extends ChangeNotifier {
         throw Exception('No vault directory configured');
       }
       
-      // Verify vault directory exists
-      final vaultDir = Directory(_vaultDirectory!);
-      if (!await vaultDir.exists()) {
-        throw Exception('Vault directory does not exist: $_vaultDirectory');
+      if (Platform.isAndroid) {
+        // For Android with SAF, verify we have access to the vault URI
+        final vaultDirectory = await PermissionService.instance.getVaultDirectory();
+        if (vaultDirectory == null) {
+          throw Exception('Cannot access vault directory. Please re-select the folder.');
+        }
+      } else {
+        // For other platforms, verify vault directory exists using traditional file system
+        final vaultDir = Directory(_vaultDirectory!);
+        if (!await vaultDir.exists()) {
+          throw Exception('Vault directory does not exist: $_vaultDirectory');
+        }
       }
       
       _initialized = true;
@@ -92,6 +109,15 @@ class VaultProvider extends ChangeNotifier {
     _clearError();
     
     try {
+      if (Platform.isAndroid) {
+        final hasPermission = await PermissionService.instance.hasStoragePermission();
+        if (!hasPermission) {
+          final granted = await PermissionService.instance.requestStoragePermission();
+          if (!granted) {
+            throw Exception('Storage permission is required to access your notes');
+          }
+        }
+      }
       
       // If we got permissions, clear any existing errors and notify listeners
       _clearError();
@@ -193,21 +219,38 @@ class VaultProvider extends ChangeNotifier {
     if (!_initialized || _vaultDirectory == null) return [];
     
     try {
-      // Check permissions before attempting to read files
-      
-      final directory = Directory(currentFullPath);
-      if (!await directory.exists()) return [];
-      
       final notes = <Note>[];
       
-      await for (final entity in directory.list()) {
-        if (entity is File && entity.path.endsWith('.md')) {
-          try {
-            final note = await Note.fromFile(entity);
-            notes.add(note);
-          } catch (e) {
-            // Skip files that can't be parsed as notes
-            debugPrint('Could not parse note from ${entity.path}: $e');
+      if (Platform.isAndroid) {
+        // Use SAF for Android
+        final safContents = await _getSafContentsInCurrentPath();
+        for (final safFile in safContents) {
+          if (!safFile.isDir && safFile.name.endsWith('.md')) {
+            try {
+              final content = await PermissionService.instance.readSafFile(safFile);
+              if (content != null) {
+                final note = Note.fromSafFile(safFile, content);
+                notes.add(note);
+              }
+            } catch (e) {
+              debugPrint('Could not parse note from ${safFile.name}: $e');
+            }
+          }
+        }
+      } else {
+        // Use traditional file system for other platforms
+        final directory = Directory(currentFullPath);
+        if (!await directory.exists()) return [];
+        
+        await for (final entity in directory.list()) {
+          if (entity is File && entity.path.endsWith('.md')) {
+            try {
+              final note = await Note.fromFile(entity);
+              notes.add(note);
+            } catch (e) {
+              // Skip files that can't be parsed as notes
+              debugPrint('Could not parse note from ${entity.path}: $e');
+            }
           }
         }
       }
@@ -227,16 +270,26 @@ class VaultProvider extends ChangeNotifier {
     if (!_initialized || _vaultDirectory == null) return [];
     
     try {
-      
-      final directory = Directory(currentFullPath);
-      if (!await directory.exists()) return [];
-      
       final folders = <String>[];
       
-      await for (final entity in directory.list()) {
-        if (entity is Directory) {
-          final folderName = entity.path.split(Platform.pathSeparator).last;
-          folders.add(folderName);
+      if (Platform.isAndroid) {
+        // Use SAF for Android
+        final safContents = await _getSafContentsInCurrentPath();
+        for (final safFile in safContents) {
+          if (safFile.isDir) {
+            folders.add(safFile.name);
+          }
+        }
+      } else {
+        // Use traditional file system for other platforms
+        final directory = Directory(currentFullPath);
+        if (!await directory.exists()) return [];
+        
+        await for (final entity in directory.list()) {
+          if (entity is Directory) {
+            final folderName = entity.path.split(Platform.pathSeparator).last;
+            folders.add(folderName);
+          }
         }
       }
       
@@ -246,6 +299,23 @@ class VaultProvider extends ChangeNotifier {
     } catch (e) {
       debugPrint('Error fetching folders: $e');
       _setError('Failed to read folders: $e');
+      return [];
+    }
+  }
+  
+  /// Get SAF contents for the current path
+  Future<List<SafDocumentFile>> _getSafContentsInCurrentPath() async {
+    if (_currentPath.isEmpty) {
+      // Root directory
+      return await PermissionService.instance.listSafContents();
+    } else {
+      // Subdirectory - get child by path
+      final pathParts = _currentPath.split('/');
+      final childDir = await PermissionService.instance.getChildByPath(pathParts);
+      if (childDir != null) {
+        final safUtil = SafUtil();
+        return await safUtil.list(childDir.uri);
+      }
       return [];
     }
   }

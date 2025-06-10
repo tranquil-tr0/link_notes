@@ -1,24 +1,10 @@
 import 'dart:io';
+import 'dart:convert'; // For utf8 encoding/decoding
 import 'package:flutter/foundation.dart';
 import 'package:saf_util/saf_util.dart';
+import 'package:saf_util/saf_util_platform_interface.dart'; // Import SafDocumentFile
+import 'package:saf_stream/saf_stream.dart'; // Import saf_stream
 import 'package:shared_preferences/shared_preferences.dart';
-
-// Define a basic data class if SafDocumentFile is not exported
-class SafDocumentFile {
-  final String uri;
-  final String name;
-  final bool isDir;
-  final int length;
-  final int lastModified;
-
-  SafDocumentFile({
-    required this.uri,
-    required this.name,
-    required this.isDir,
-    required this.length,
-    required this.lastModified,
-  });
-}
 
 /// Service for handling file system permissions using Storage Access Framework
 class PermissionService {
@@ -28,7 +14,8 @@ class PermissionService {
 
   static PermissionService get instance => _instance;
 
-  final SafUtil _safUtil = SafUtil.new();
+  final SafUtil _safUtil = SafUtil();
+  final SafStream _safStream = SafStream(); // Initialize SafStream
   static const String _safUriKey = 'saf_vault_uri';
   static const String _hasPermissionKey = 'has_saf_permission';
 
@@ -50,14 +37,9 @@ class PermissionService {
         final hasReadPermission = await _safUtil.hasPersistedPermission(
           safUri,
           checkRead: true,
-          checkWrite: false,
+          checkWrite: true, // Check for both read and write permissions
         );
-        final hasWritePermission = await _safUtil.hasPersistedPermission(
-          safUri,
-          checkRead: false,
-          checkWrite: true,
-        );
-        return hasReadPermission && hasWritePermission;
+        return hasReadPermission;
       } catch (e) {
         debugPrint('Error checking persisted permissions: $e');
         return false;
@@ -241,20 +223,18 @@ class PermissionService {
 
       final actualFileName = pathParts.last;
       
-      // For now, we'll create a text file - more complex file creation would need
-      // additional SAF methods that aren't in the current API
-      // This is a limitation we'll need to work around
       debugPrint('Creating file: $actualFileName in $currentUri');
       
-      // Return a mock SafDocumentFile since the API doesn't support direct file creation with content
-      // In a real implementation, you'd need to use native Android code or additional SAF methods
-      return SafDocumentFile(
-        uri: '$currentUri/$actualFileName',
-        name: actualFileName,
-        isDir: false,
-        length: content.length,
-        lastModified: DateTime.now().millisecondsSinceEpoch,
+      await _safStream.writeFileBytes(
+        currentUri,
+        actualFileName,
+        'text/markdown', // Assuming markdown files
+        utf8.encode(content),
       );
+
+      // After writing, get the SafDocumentFile for the newly created file
+      return await _safUtil.child(currentUri, [actualFileName]);
+
     } catch (e) {
       debugPrint('Error creating SAF file: $e');
       return null;
@@ -343,6 +323,18 @@ class PermissionService {
       return await _safUtil.rename(file.uri, file.isDir, newName);
     } catch (e) {
       debugPrint('Error renaming SAF file: $e');
+      return null;
+    }
+  }
+  /// Read a file using SAF
+  Future<String?> readSafFile(SafDocumentFile file) async {
+    if (kIsWeb || !Platform.isAndroid) return null;
+
+    try {
+      final fileBytes = await _safStream.readFileBytes(file.uri);
+      return utf8.decode(fileBytes);
+    } catch (e) {
+      debugPrint('Error reading SAF file: $e');
       return null;
     }
   }
