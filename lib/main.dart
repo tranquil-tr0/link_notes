@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:flutter_quill/flutter_quill.dart'; // Add FlutterQuill import for localizations
 import 'package:provider/provider.dart';
 import 'providers/vault_provider.dart';
 import 'screens/directory_screen.dart';
@@ -37,6 +39,15 @@ class LinkNotesApp extends StatelessWidget {
       child: MaterialApp(
         title: 'Link Notes',
         debugShowCheckedModeBanner: false,
+        localizationsDelegates: const [
+          GlobalMaterialLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+          FlutterQuillLocalizations.delegate, // Add FlutterQuill localizations delegate
+        ],
+        supportedLocales: const [
+          Locale('en', ''), // English, no country code
+        ],
         theme: ThemeData(
           colorScheme: ColorScheme.fromSeed(
             seedColor: Colors.blue,

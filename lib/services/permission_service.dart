@@ -379,4 +379,86 @@ class PermissionService {
       return null;
     }
   }
+
+  /// Validate SAF URI and permissions
+  Future<bool> validateSafUriAndPermissions(String uri) async {
+    if (kIsWeb || !Platform.isAndroid) return false;
+
+    try {
+      debugPrint('DEBUG: Validating SAF URI: $uri');
+      
+      // Check if URI exists and is accessible
+      final docFile = await _safUtil.documentFileFromUri(uri, null);
+      if (docFile == null) {
+        debugPrint('DEBUG: Document file not found for URI: $uri');
+        return false;
+      }
+      
+      debugPrint('DEBUG: Document file found - Name: ${docFile.name}, IsDir: ${docFile.isDir}');
+      
+      // Check if we have persisted permissions for this URI
+      final hasReadPermission = await _safUtil.hasPersistedPermission(
+        uri,
+        checkRead: true,
+        checkWrite: false,
+      );
+      
+      final hasWritePermission = await _safUtil.hasPersistedPermission(
+        uri,
+        checkRead: false,
+        checkWrite: true,
+      );
+      
+      debugPrint('DEBUG: URI permissions - Read: $hasReadPermission, Write: $hasWritePermission');
+      
+      return hasReadPermission && hasWritePermission;
+    } catch (e) {
+      debugPrint('DEBUG: Error validating SAF URI: $e');
+      debugPrint('DEBUG: Error type: ${e.runtimeType}');
+      return false;
+    }
+  }
+
+  /// Get detailed SAF URI information for debugging
+  Future<Map<String, dynamic>> getSafUriInfo(String uri) async {
+    if (kIsWeb || !Platform.isAndroid) return {};
+
+    try {
+      final info = <String, dynamic>{};
+      
+      // Basic URI info
+      info['uri'] = uri;
+      info['isContentUri'] = uri.startsWith('content://');
+      
+      // Try to get document file info
+      try {
+        final docFile = await _safUtil.documentFileFromUri(uri, null);
+        if (docFile != null) {
+          info['exists'] = true;
+          info['name'] = docFile.name;
+          info['isDir'] = docFile.isDir;
+          info['length'] = docFile.length;
+          info['lastModified'] = docFile.lastModified;
+        } else {
+          info['exists'] = false;
+        }
+      } catch (e) {
+        info['documentFileError'] = e.toString();
+      }
+      
+      // Check permissions
+      try {
+        final hasRead = await _safUtil.hasPersistedPermission(uri, checkRead: true, checkWrite: false);
+        final hasWrite = await _safUtil.hasPersistedPermission(uri, checkRead: false, checkWrite: true);
+        info['hasReadPermission'] = hasRead;
+        info['hasWritePermission'] = hasWrite;
+      } catch (e) {
+        info['permissionError'] = e.toString();
+      }
+      
+      return info;
+    } catch (e) {
+      return {'error': e.toString()};
+    }
+  }
 }
