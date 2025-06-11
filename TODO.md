@@ -14,3 +14,4 @@
 - [ ] quick settings panel quick note
 - [ ] update versions of all the libraries
 - [ ] fix padding for notes panel
+- [ ] fix yaml behavior - 'Notes with YAML will have it deleted when they are edited.''The app\'s yaml frontmatter will be added again if it is turned on and edited again'

@@ -9,6 +9,7 @@ class SettingsService {
 
   static const String _vaultDirectoryKey = 'vault_directory';
   static const String _isFirstLaunchKey = 'is_first_launch';
+  static const String _enableYamlFrontmatterKey = 'enable_yaml_frontmatter';
   
   // In-memory fallback storage when SharedPreferences fails
   final Map<String, dynamic> _fallbackStorage = {};
@@ -181,5 +182,34 @@ class SettingsService {
     if (!isInitialized) return false;
     final directory = getVaultDirectory();
     return directory != null && directory.isNotEmpty;
+  }
+
+  /// Get whether YAML frontmatter is enabled (default: true for backward compatibility)
+  bool isYamlFrontmatterEnabled() {
+    if (!isInitialized) return true; // Default to enabled
+    
+    if (_initializationFailed) {
+      return _fallbackStorage[_enableYamlFrontmatterKey] as bool? ?? true;
+    }
+    
+    return _prefs?.getBool(_enableYamlFrontmatterKey) ?? true;
+  }
+
+  /// Set whether YAML frontmatter should be enabled
+  Future<bool> setYamlFrontmatterEnabled(bool enabled) async {
+    if (!isInitialized) return false;
+    
+    if (_initializationFailed) {
+      _fallbackStorage[_enableYamlFrontmatterKey] = enabled;
+      return true;
+    }
+    
+    try {
+      return await _prefs!.setBool(_enableYamlFrontmatterKey, enabled);
+    } catch (e) {
+      debugPrint('Failed to save YAML frontmatter setting to SharedPreferences, using fallback: $e');
+      _fallbackStorage[_enableYamlFrontmatterKey] = enabled;
+      return true;
+    }
   }
 }

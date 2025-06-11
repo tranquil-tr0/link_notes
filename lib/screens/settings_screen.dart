@@ -166,6 +166,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
             const SizedBox(height: 24),
             _buildVaultDirectorySection(),
+            const SizedBox(height: 24),
+            _buildYamlFrontmatterSection(),
             if (_error != null) ...[
               const SizedBox(height: 16),
               _buildErrorMessage(),
@@ -262,6 +264,84 @@ class _SettingsScreenState extends State<SettingsScreen> {
               '> Storage & cache' : ''}',
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
                 color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildYamlFrontmatterSection() {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Icon(Icons.code),
+                const SizedBox(width: 8),
+                Text(
+                  'Note Format',
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Include YAML Frontmatter',
+                        style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Add metadata (id, title, dates) to the beginning of notes',
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.7),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Switch(
+                  value: _settingsService.isYamlFrontmatterEnabled(),
+                  onChanged: (value) async {
+                    await _settingsService.setYamlFrontmatterEnabled(value);
+                    setState(() {}); // Refresh UI
+                    
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(
+                            value
+                              ? 'YAML frontmatter enabled for new notes'
+                              : 'YAML frontmatter disabled for new notes'
+                          ),
+                          duration: const Duration(seconds: 2),
+                        ),
+                      );
+                    }
+                  },
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'This setting only affects newly created or edited notes. '
+              'Notes with YAML will have it deleted when they are edited.'
+              'The app\'s yaml frontmatter will be added again if it is turned on and edited again',
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+                fontStyle: FontStyle.italic,
               ),
             ),
           ],

@@ -7,6 +7,7 @@ import 'package:saf_util/saf_util_platform_interface.dart';
 import 'package:saf_stream/saf_stream.dart';
 import '../services/markdown_conversion_service.dart';
 import '../services/permission_service.dart';
+import '../services/settings_service.dart';
 import '../utils/path_utils.dart';
 
 class Note {
@@ -163,8 +164,13 @@ class Note {
   Future<void> toFile() async {
     debugPrint('DEBUG: toFile() called for note: $id at path: $filePath');
     
-    // Create frontmatter with metadata
-    final frontmatter = '''---
+    // Check if YAML frontmatter is enabled in settings
+    final includeYamlFrontmatter = SettingsService.instance.isYamlFrontmatterEnabled();
+    
+    String fullContent;
+    if (includeYamlFrontmatter) {
+      // Create frontmatter with metadata
+      final frontmatter = '''---
 id: $id
 title: $title
 created_at: ${createdAt.toIso8601String()}
@@ -172,9 +178,13 @@ modified_at: ${modifiedAt.toIso8601String()}
 ---
 
 ''';
+      fullContent = frontmatter + content;
+    } else {
+      // Use content without YAML frontmatter
+      fullContent = content;
+    }
     
-    final fullContent = frontmatter + content;
-    debugPrint('DEBUG: Full content prepared, length: ${fullContent.length}');
+    debugPrint('DEBUG: Full content prepared, length: ${fullContent.length}, YAML frontmatter: $includeYamlFrontmatter');
     
     if (Platform.isAndroid && PathUtils.isSafUri(filePath)) {
       debugPrint('DEBUG: Using SAF operations for Android');
