@@ -1,3 +1,7 @@
+# dev has been moved to [link-notes](github.com/tranquil-tr0/link-notes-react-native)
+
+
+
 # link_notes
 
 A new Flutter project.
