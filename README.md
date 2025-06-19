@@ -1,4 +1,4 @@
-# dev has been moved to [link-notes](github.com/tranquil-tr0/link-notes-react-native)
+# dev has been moved to [link-notes](github.com/tranquil-tr0/link-notes-react-native), flutter has been dropped- switched to react native
 
 
 
